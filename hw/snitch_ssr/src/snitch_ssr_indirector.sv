@@ -6,8 +6,8 @@
 
 // Indirection datapath for the SSR address generator.
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "common_cells_registers.svh"
+`include "common_cells_assertions.svh"
 
 module snitch_ssr_indirector import snitch_ssr_pkg::*; #(
   parameter ssr_cfg_t Cfg = '0,

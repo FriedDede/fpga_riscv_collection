@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
 // MMU w/ L0 TLB

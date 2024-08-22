@@ -4,8 +4,8 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/assign.svh"
-`include "axi/assign.svh"
+`include "reqrsp_interface_assign.svh"
+`include "axi_assign.svh"
 
 /// Testbench for the request/response TB
 module reqrsp_to_axi_tb import reqrsp_pkg::*; #(

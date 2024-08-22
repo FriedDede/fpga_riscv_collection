@@ -5,7 +5,7 @@
 // Author: Thomas Benz <tbenz@iis.ee.ethz.ch>
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/assertions.svh"
+`include "common_cells_assertions.svh"
 
 /// This module multiplexes many narrow ports and one wide port onto many narrow
 /// ports. The wide or narrow ports can be selected by using the `sel_wide_i` signal.
@@ -126,8 +126,8 @@ module mem_wide_narrow_mux #(
 
 endmodule
 
-`include "mem_interface/typedef.svh"
-`include "mem_interface/assign.svh"
+`include "mem_interface_typedef.svh"
+`include "mem_interface_assign.svh"
 
 /// Interface wrapper.
 module mem_wide_narrow_mux_intf #(

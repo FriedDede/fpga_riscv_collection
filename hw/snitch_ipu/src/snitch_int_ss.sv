@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 
 module snitch_int_ss import riscv_instr::*; import snitch_ipu_pkg::*; import snitch_pkg::*; #(
   parameter int unsigned AddrWidth = 0,

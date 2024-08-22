@@ -5,8 +5,8 @@
 // Author: Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
-`include "common_cells/assertions.svh"
-`include "snitch_ssr/typedef.svh"
+`include "common_cells_assertions.svh"
+`include "snitch_ssr_typedef.svh"
 
 module snitch_ssr_streamer import snitch_ssr_pkg::*; #(
   parameter int unsigned NumSsrs    = 0,

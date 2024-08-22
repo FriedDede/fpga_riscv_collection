@@ -4,9 +4,9 @@
 
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
-`include "tcdm_interface/typedef.svh"
-`include "tcdm_interface/assign.svh"
-`include "snitch_ssr/typedef.svh"
+`include "tcdm_interface_typedef.svh"
+`include "tcdm_interface_assign.svh"
+`include "snitch_ssr_typedef.svh"
 
 module fixture_ssr_streamer import snitch_ssr_pkg::*; #(
   parameter int unsigned NumSsrs    = 0,

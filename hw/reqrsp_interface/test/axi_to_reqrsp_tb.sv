@@ -4,10 +4,10 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
-`include "axi/typedef.svh"
-`include "axi/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
+`include "axi_typedef.svh"
+`include "axi_assign.svh"
 
 module axi_to_reqrsp_tb import reqrsp_pkg::*; #(
   parameter int unsigned AW = 32,

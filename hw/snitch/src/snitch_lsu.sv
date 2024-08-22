@@ -79,7 +79,7 @@ module snitch_lsu #(
   input  drsp_t                data_rsp_i
 );
 
-  `include "common_cells/assertions.svh"
+  `include "common_cells_assertions.svh"
 
   localparam int unsigned DataAlign = $clog2(DataWidth/8);
 

@@ -25,13 +25,13 @@ module tb_memory_axi #(
   output rsp_t rsp_o
 );
 
-  `include "axi/assign.svh"
-  `include "axi/typedef.svh"
+  `include "axi_assign.svh"
+  `include "axi_typedef.svh"
 
-  `include "register_interface/typedef.svh"
-  `include "register_interface/assign.svh"
+  `include "register_interface_typedef.svh"
+  `include "register_interface_assign.svh"
 
-  `include "common_cells/assertions.svh"
+  `include "common_cells_assertions.svh"
 
   localparam int NumBytes = AxiDataWidth/8;
   localparam int BusAlign = $clog2(NumBytes);

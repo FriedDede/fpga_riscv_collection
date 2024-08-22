@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
-`include "reqrsp_interface/typedef.svh"
+`include "reqrsp_interface_typedef.svh"
 
 /// Convert AXI to TCDM protocol.
 module axi_to_tcdm #(

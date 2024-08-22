@@ -19,7 +19,7 @@ module tb_memory_regbus #(
   output rsp_t rsp_o
 );
 
-  `include "register_interface/assign.svh"
+  `include "register_interface_assign.svh"
 
   import "DPI-C" function void tb_memory_read(
     input longint addr,

@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "mem_interface/assign.svh"
+`include "mem_interface_assign.svh"
 
 /// Testbench for `wide_narrow_mux`.
 module mem_wide_narrow_mux_tb #(

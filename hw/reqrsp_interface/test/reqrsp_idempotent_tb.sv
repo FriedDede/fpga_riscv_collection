@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_assign.svh"
 
 /// Testbench for all idempotent modules i.e., module which do not alter data
 /// but only the handshaking.

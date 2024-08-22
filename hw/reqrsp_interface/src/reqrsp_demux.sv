@@ -4,8 +4,8 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/typedef.svh"
-`include "common_cells/assertions.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "common_cells_assertions.svh"
 
 module reqrsp_demux #(
     /// Number of input ports.
@@ -93,8 +93,8 @@ module reqrsp_demux #(
 
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
 
 /// Reqrsp demux interface version.
 module reqrsp_demux_intf #(

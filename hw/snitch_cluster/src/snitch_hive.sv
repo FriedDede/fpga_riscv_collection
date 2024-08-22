@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "snitch_vm/typedef.svh"
+`include "snitch_vm_typedef.svh"
 
 /// Shared subsystems for `CoreCount` cores.
 module snitch_hive #(

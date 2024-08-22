@@ -2,15 +2,15 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "axi/typedef.svh"
+`include "axi_typedef.svh"
 
 module testharness import snitch_cluster_pkg::*; (
   input  logic        clk_i,
   input  logic        rst_ni
 );
-  import "DPI-C" function void clint_tick(
-    output byte msip[]
-  );
+    //import "DPI-C" function void clint_tick(
+    //  output byte msip[]
+    //);
 
   narrow_in_req_t narrow_in_req;
   narrow_in_resp_t narrow_in_resp;
@@ -79,16 +79,16 @@ module testharness import snitch_cluster_pkg::*; (
 
   // CLINT
   // verilog_lint: waive-start always-ff-non-blocking
-  localparam int NumCores = snitch_cluster_pkg::NrCores;
-  always_ff @(posedge clk_i) begin
-    automatic byte msip_ret[NumCores];
-    if (rst_ni) begin
-      clint_tick(msip_ret);
-      for (int i = 0; i < NumCores; i++) begin
-        msip[i] = msip_ret[i];
-      end
-    end
-  end
+  // localparam int NumCores = snitch_cluster_pkg::NrCores;
+  // always_ff @(posedge clk_i) begin
+  //   automatic byte msip_ret[NumCores];
+  //   if (rst_ni) begin
+  //     clint_tick(msip_ret);
+  //     for (int i = 0; i < NumCores; i++) begin
+  //       msip[i] = msip_ret[i];
+  //     end
+  //   end
+  // end
   // verilog_lint: waive-stop always-ff-non-blocking
 
 endmodule

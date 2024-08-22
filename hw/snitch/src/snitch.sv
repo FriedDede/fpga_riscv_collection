@@ -5,8 +5,8 @@
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 // Description: Top-Level of Snitch Integer Core RV32E
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "common_cells_registers.svh"
+`include "common_cells_assertions.svh"
 
 // `SNITCH_ENABLE_PERF Enables mcycle, minstret performance counters (read only)
 

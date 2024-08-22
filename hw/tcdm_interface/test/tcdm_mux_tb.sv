@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "tcdm_interface/assign.svh"
+`include "tcdm_interface_assign.svh"
 
 /// Testbench for the `tcdm_mux`. Based on the `reqrsp_mux_tb`, see that
 /// testbench for a more indepth and commented version. This one just

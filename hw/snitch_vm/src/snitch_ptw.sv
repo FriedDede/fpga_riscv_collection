@@ -4,8 +4,8 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "common_cells_registers.svh"
+`include "common_cells_assertions.svh"
 
 /// Page table walker (PTW) for RISC-V (Custom)Sv32 address translation.
 module snitch_ptw import snitch_pkg::*; #(

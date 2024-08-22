@@ -2,8 +2,8 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "reqrsp_interface/assign.svh"
-`include "tcdm_interface/assign.svh"
+`include "reqrsp_interface_assign.svh"
+`include "tcdm_interface_assign.svh"
 
 /// Testbench for `reqrsp_to_tcdm` module.
 module reqrsp_to_tcdm_tb import reqrsp_pkg::*; #(

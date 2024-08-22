@@ -4,7 +4,7 @@
 
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 
 module snitch_ssr_intersector import snitch_ssr_pkg::*; #(
   parameter int unsigned StreamctlDepth = 0,

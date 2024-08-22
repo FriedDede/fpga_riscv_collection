@@ -7,7 +7,7 @@
 // Description: Converts propper handshaking (ready/valid) to TCDM signalling
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 
 // TODO(zarubaf): Limit soc request protocol to 32 bit
 module tcdm_shim #(

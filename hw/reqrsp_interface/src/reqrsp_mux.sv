@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/typedef.svh"
+`include "reqrsp_interface_typedef.svh"
 
 /// Multiplex multiple `reqrsp` ports onto one, based on arbitration.
 module reqrsp_mux #(
@@ -148,8 +148,8 @@ module reqrsp_mux #(
 
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
 
 /// Interface wrapper.
 module reqrsp_mux_intf #(

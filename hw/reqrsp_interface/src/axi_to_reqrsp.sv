@@ -7,8 +7,8 @@
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 // - Wolfgang Roenninger <wroennin@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "common_cells_registers.svh"
+`include "common_cells_assertions.svh"
 
 /// AXI4+ATOP slave module which translates AXI bursts to reqrsp. This module
 /// fully supports the Atomic + LR/SC semantic of the reqrsp interface.
@@ -25,9 +25,9 @@
 /// > repository. Eventually these two modules can be merged (translating from AXI
 /// > to reqrsp to mem).
 module axi_to_reqrsp #(
-  /// AXI4+ATOP request type. See `include/axi/typedef.svh`.
+  /// AXI4+ATOP request type. See `include/axi_typedef.svh`.
   parameter type         axi_req_t  = logic,
-  /// AXI4+ATOP response type. See `include/axi/typedef.svh`.
+  /// AXI4+ATOP response type. See `include/axi_typedef.svh`.
   parameter type         axi_rsp_t = logic,
   /// Address width, has to be less or equal than the width off the AXI address
   /// field. Determines the width of `mem_addr_o`. Has to be wide enough to emit
@@ -412,10 +412,10 @@ module axi_to_reqrsp #(
   // pragma translate_on
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
-`include "axi/typedef.svh"
-`include "axi/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
+`include "axi_typedef.svh"
+`include "axi_assign.svh"
 
 /// Interface Wrapper
 module axi_to_reqrsp_intf #(

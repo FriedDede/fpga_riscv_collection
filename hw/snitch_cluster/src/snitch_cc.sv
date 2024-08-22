@@ -4,9 +4,9 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
-`include "snitch_vm/typedef.svh"
+`include "common_cells_assertions.svh"
+`include "common_cells_registers.svh"
+`include "snitch_vm_typedef.svh"
 
 /// Snitch Core Complex (CC)
 /// Contains the Snitch Integer Core + FPU + Private Accelerators
@@ -852,7 +852,7 @@ module snitch_cc #(
   // pragma translate_off
   int f;
   string fn;
-  logic [63:0] cycle = 0;
+  logic [63:0] cycle;
   initial begin
     // We need to schedule the assignment into a safe region, otherwise
     // `hart_id_i` won't have a value assigned at the beginning of the first

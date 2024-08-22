@@ -2,10 +2,10 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "tcdm_interface/typedef.svh"
-`include "tcdm_interface/assign.svh"
-`include "mem_interface/typedef.svh"
-`include "mem_interface/assign.svh"
+`include "tcdm_interface_typedef.svh"
+`include "tcdm_interface_assign.svh"
+`include "mem_interface_typedef.svh"
+`include "mem_interface_assign.svh"
 
 module snitch_tcdm_interconnect_tb #(
   parameter int unsigned NrInput = 4,

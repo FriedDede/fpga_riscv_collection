@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/typedef.svh"
+`include "reqrsp_interface_typedef.svh"
 
 /// Convert from reqrsp to tcdm.
 module reqrsp_to_tcdm #(
@@ -68,10 +68,10 @@ module reqrsp_to_tcdm #(
 
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
-`include "tcdm_interface/typedef.svh"
-`include "tcdm_interface/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
+`include "tcdm_interface_typedef.svh"
+`include "tcdm_interface_assign.svh"
 
 /// Interface wrapper.
 module reqrsp_to_tcdm_intf #(

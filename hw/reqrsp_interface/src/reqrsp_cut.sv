@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "reqrsp_interface/typedef.svh"
+`include "reqrsp_interface_typedef.svh"
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
@@ -66,8 +66,8 @@ module reqrsp_cut #(
 endmodule
 
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
 
 module reqrsp_cut_intf #(
     /// Address width of the interface.

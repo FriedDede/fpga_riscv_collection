@@ -4,8 +4,8 @@
 
 // AUthor: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
-`include "common_cells/assertions.svh"
+`include "common_cells_registers.svh"
+`include "common_cells_assertions.svh"
 
 /// Convert reqrsp to AXI.
 ///
@@ -291,10 +291,10 @@ module reqrsp_to_axi import reqrsp_pkg::*; #(
 
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
-`include "axi/typedef.svh"
-`include "axi/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
+`include "axi_typedef.svh"
+`include "axi_assign.svh"
 
 module reqrsp_to_axi_intf #(
   /// ID width which to send the transactions.

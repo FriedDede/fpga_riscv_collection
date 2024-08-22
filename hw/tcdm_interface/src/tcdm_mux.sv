@@ -2,7 +2,7 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "tcdm_interface/typedef.svh"
+`include "tcdm_interface_typedef.svh"
 
 /// Multiplex `NrPorts` TCDM interfaces onto one.
 module tcdm_mux #(
@@ -102,8 +102,8 @@ module tcdm_mux #(
 
 endmodule
 
-`include "tcdm_interface/typedef.svh"
-`include "tcdm_interface/assign.svh"
+`include "tcdm_interface_typedef.svh"
+`include "tcdm_interface_assign.svh"
 
 /// Interface wrapper.
 module tcdm_mux_intf #(

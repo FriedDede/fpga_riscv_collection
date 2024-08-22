@@ -4,7 +4,7 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_assign.svh"
 
 /// Testbench for `reqrsp_demux`. Random drivers on the slave and master ports
 /// drive a random pattern. The monitors track all packets and the scoreboard

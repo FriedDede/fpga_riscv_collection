@@ -2,12 +2,12 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 
-`include "reqrsp_interface/typedef.svh"
+`include "reqrsp_interface_typedef.svh"
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
 /// Decouple `src` and `dst` side using an isochronous clock-domain crossing.
-/// See `common_cells/isochronous_spill_register` for further detail on the
+/// See `common_cells_isochronous_spill_register` for further detail on the
 /// clock requirements.
 module reqrsp_iso #(
     /// Address width of the interface.
@@ -80,8 +80,8 @@ module reqrsp_iso #(
 
 endmodule
 
-`include "reqrsp_interface/typedef.svh"
-`include "reqrsp_interface/assign.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "reqrsp_interface_assign.svh"
 
 /// Interface wrapper for `reqrsp_iso`.
 module reqrsp_iso_intf #(

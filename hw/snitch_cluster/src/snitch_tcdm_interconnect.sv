@@ -5,7 +5,7 @@
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 // Author: Wolfgang Roenninger <wroennin@ethz.ch>
 
-`include "mem_interface/typedef.svh"
+`include "mem_interface_typedef.svh"
 
 /// Lightweight wrapper for a fixed response latency interconnect, i.e.,
 /// something that can be used to interconnect memories.

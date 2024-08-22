@@ -6,17 +6,17 @@
 // Author: Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 // Author: Thomas Benz <tbenz@iis.ee.ethz.ch>
 
-`include "axi/assign.svh"
-`include "axi/typedef.svh"
-`include "common_cells/assertions.svh"
-`include "common_cells/registers.svh"
+`include "axi_assign.svh"
+`include "axi_typedef.svh"
+`include "common_cells_assertions.svh"
+`include "common_cells_registers.svh"
 
-`include "mem_interface/typedef.svh"
-`include "register_interface/typedef.svh"
-`include "reqrsp_interface/typedef.svh"
-`include "tcdm_interface/typedef.svh"
+`include "mem_interface_typedef.svh"
+`include "register_interface_typedef.svh"
+`include "reqrsp_interface_typedef.svh"
+`include "tcdm_interface_typedef.svh"
 
-`include "snitch_vm/typedef.svh"
+`include "snitch_vm_typedef.svh"
 
 /// Snitch many-core cluster with improved TCDM interconnect.
 /// Snitch Cluster Top-Level.
@@ -1001,8 +1001,8 @@ module snitch_cluster
         .hive_rsp_o (hive_rsp_reshape),
         .ptw_data_req_o (ptw_req[i]),
         .ptw_data_rsp_i (ptw_rsp[i]),
-        .axi_req_o (wide_axi_mst_req[ICache+i]),
-        .axi_rsp_i (wide_axi_mst_rsp[ICache+i]),
+        .axi_req_o (wide_axi_mst_req[ICache+i]), // i_cache_req_o
+        .axi_rsp_i (wide_axi_mst_rsp[ICache+i]), // i_cache_rsp_i
         .icache_prefetch_enable_i (icache_prefetch_enable),
         .icache_events_o(icache_events_reshape),
         .sram_cfgs_i

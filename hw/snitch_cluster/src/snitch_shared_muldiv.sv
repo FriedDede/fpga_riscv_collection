@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 
 /// Shared Multiply/Divide a.k.a M Extension
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 /// Based on Ariane's Multiply Divide
 /// Author: Michael Schaffner,  <schaffner@iis.ee.ethz.ch>
 /// Author: Florian Zaruba , <zarubaf@iis.ee.ethz.ch>

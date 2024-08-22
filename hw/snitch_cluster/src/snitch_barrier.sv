@@ -4,7 +4,7 @@
 //
 // Author: Luca Colagrande <colluca@iis.ee.ethz.ch>
 
-`include "common_cells/registers.svh"
+`include "common_cells_registers.svh"
 
 /// Hardware barrier to synchronize all cores in a cluster.
 module snitch_barrier #(
