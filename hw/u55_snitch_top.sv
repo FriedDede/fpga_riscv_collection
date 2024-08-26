@@ -33,7 +33,7 @@ localparam NBSlave          = CORE_NUMBER; // snitch clusters
 localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 64
 localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
 localparam AxiIdWidthMaster = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthOut;     // 4 + 1 (each core exposes 2 channels)
+localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthIn + 2;  // 4 + 2 (each core exposes 3 channels)
 localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
 AXI_BUS #(
@@ -91,7 +91,7 @@ logic [AxiDataWidth-1:0] rom_rdata;
                 .AXI_DATA_WIDTH ( AxiDataWidth     ),
                 .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
                 .AXI_USER_WIDTH ( AxiUserWidth     )
-            ) snitch_mst[2:0]();
+            ) axi_snitch2mux[2:0]();
 
             AXI_BUS #(
                 .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
@@ -101,17 +101,15 @@ logic [AxiDataWidth-1:0] rom_rdata;
             ) axi_mux2mem();
 
             
-            `AXI_ASSIGN_FROM_REQ (snitch_mst[0], axi_data_snitch_req[0])
-            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], snitch_mst[0])
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0], axi_data_snitch_req[0])
+            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0])
 
-            `AXI_ASSIGN_FROM_REQ (snitch_mst[1], axi_data_snitch_req[1])
-            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], snitch_mst[1])
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[1], axi_data_snitch_req[1])
+            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], axi_snitch2mux[1])
 
-            `AXI_ASSIGN_FROM_REQ (snitch_mst[2], axi_icache_snitch_req)
-            `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, snitch_mst[2])
-            
-            //`AXI_ASSIGN_MASTER_TO_ARIANE_AXI_INT(snitch_mst[0],axi_data_snitch_req[i],axi_data_snitch_resp[i])
-            //`AXI_ASSIGN_MASTER_TO_ARIANE_AXI_INT(snitch_mst[1],axi_icache_snitch_req[i],axi_icache_snitch_resp[i])
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2], axi_icache_snitch_req)
+            `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2])
+
 
             axi_mux_intf #(
                 .NO_SLV_PORTS       ( 3                 ),
@@ -124,7 +122,7 @@ logic [AxiDataWidth-1:0] rom_rdata;
                 .clk_i  ( clk            ),
                 .rst_ni ( core_areset_n  ),
                 .test_i ( '0             ),
-                .slv    ( snitch_mst     ),
+                .slv    ( axi_snitch2mux ),
                 .mst    ( axi_mux2mem    )
             );
 

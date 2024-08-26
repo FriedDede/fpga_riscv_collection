@@ -55,8 +55,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     parameter int unsigned ICacheLineCount    = 128,
     /// Number of icache sets.
     parameter int unsigned ICacheSets         = 4,
-    /// Add isochronous clock-domain crossings e.g., make it possible to o
-    /// the core in a slower clock domain.
+    /// Add isochronous clock-domain crossings e.g.,
     parameter bit          IsoCrossing        = 1,
     /// Timing Parameters
     parameter snitch_pma_pkg::snitch_pma_t SnitchPMACfg = '{default: 0},
@@ -70,10 +69,13 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     input   logic                                   clk_i,
     input   logic                                   rst_ni,
     input   logic [31:0]                            hart_id_i,
+
     output  snitch_cluster_pkg::narrow_out_req_t    inst_out_req_o,
     input   snitch_cluster_pkg::narrow_out_resp_t   inst_out_resp_i,
+
     output  snitch_cluster_pkg::narrow_out_req_t    data_core_out_req_o,
     input   snitch_cluster_pkg::narrow_out_resp_t   data_core_out_resp_i,
+    
     output  snitch_cluster_pkg::narrow_out_req_t    data_fpu_out_req_o,
     input   snitch_cluster_pkg::narrow_out_resp_t   data_fpu_out_resp_i
 );
@@ -89,23 +91,18 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     typedef logic [AddrWidth-1:0]       addr_t;
     typedef logic [DataWidth-1:0]       data_t;
     typedef logic [DataWidth/8-1:0]     strb_t;
-    typedef logic [DataWidth-1:0]       data_dma_t;
-    typedef logic [DataWidth/8-1:0]     strb_dma_t;
     typedef logic [IdWidthIn-1:0]       id_mst_t;
     typedef logic [IdWidthOut-1:0]      id_slv_t;
-    typedef logic [IdWidthIn-1:0]       id_dma_mst_t;
-    typedef logic [IdWidthOut-1:0]      id_dma_slv_t;
     typedef logic [UserWidth-1:0]       user_t;
-    typedef logic [UserWidth-1:0]       user_dma_t;
     // bus_typedefs
     // Regbus peripherals.
     typedef struct packed {
-      acc_addr_e   addr;
-      logic [4:0]  id;
-      logic [31:0] data_op;
-      data_t       data_arga;
-      data_t       data_argb;
-      addr_t       data_argc;
+      snitch_pkg::acc_addr_e  addr;
+      logic [4:0]             id;
+      logic [31:0]            data_op;
+      data_t                  data_arga;
+      data_t                  data_argb;
+      addr_t                  data_argc;
     } acc_req_t;
     typedef struct packed {
       logic [4:0] id;
@@ -118,11 +115,12 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     `REQRSP_TYPEDEF_ALL(reqrsp, addr_t, data_t, strb_t)
     `REG_BUS_TYPEDEF_REQ(reg_req_t, addr_t, data_t, strb_t)
     `REG_BUS_TYPEDEF_RSP(reg_rsp_t, data_t)
-    // perf counter
+    
+    // snitch perf counter
     snitch_pkg::core_events_t snitch_events;
     snitch_pkg::core_events_t fpu_events;
 
-    // core signals
+    // core <-> cache 
     addr_t         inst_addr_o;
     logic          inst_cacheable_o;
     logic [31:0]   inst_data_i;
@@ -133,19 +131,39 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     reqrsp_req_t   data_req_o;
     reqrsp_rsp_t   data_rsp_i;
 
-    // core <-> fpu acc signals
+    // core <-> acc 
     logic          acc_qvalid_o;
     logic          acc_qready_i;
     logic          acc_pvalid_i;
     logic          acc_pready_o; 
-    acc_req_t      data_acc_req_o;
-    acc_resp_t     data_acc_resp_i;
+    acc_req_t      acc_req_o;
+    acc_resp_t     acc_resp_i;
+    // spill register
+    acc_resp_t     acc_resp_reg;
+    logic          acc_pvalid_reg;
+    logic          acc_pready_reg;
+    // fpu
+    logic          acc_fpu_qvalid;
+    logic          acc_fpu_qready;
+    logic          acc_fpu_pvalid;
+    logic          acc_fpu_pready;
+    acc_resp_t     acc_fpu_resp;
+    // muldiv
+    logic          acc_muldiv_qvalid;
+    logic          acc_muldiv_qready;
+    logic          acc_muldiv_qvalid_reg;
+    logic          acc_muldiv_qready_reg;
+    logic          acc_muldiv_pvalid;
+    logic          acc_muldiv_pready;
+    acc_resp_t     acc_muldiv_resp;
+    acc_req_t      acc_muldiv_req;
 
-    // core <-> fpu control signals
+    // core <-> fpu control 
     fpnew_pkg::roundmode_e fpu_rnd_mode;
     fpnew_pkg::fmt_mode_t  fpu_fmt_mode;
     fpnew_pkg::status_t    fpu_status;   
     
+    // snitch integer core
     snitch #(
         .AddrWidth (AddrWidth),
         .DataWidth (DataWidth),
@@ -194,10 +212,10 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
         .inst_valid_o     (inst_valid_o),
         .inst_ready_i     (inst_ready_i),
         // we don't use any accelerator, only the integer core
-        .acc_qreq_o       (data_acc_req_o),
+        .acc_qreq_o       (acc_req_o),
         .acc_qvalid_o     (acc_qvalid_o),
         .acc_qready_i     (acc_qready_i),
-        .acc_prsp_i       (data_acc_resp_i),
+        .acc_prsp_i       (acc_resp_i),
         .acc_pvalid_i     (acc_pvalid_i),
         .acc_pready_o     (acc_pready_o),
         .caq_pvalid_i     (),
@@ -222,11 +240,26 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
         .barrier_i        ()
     );
 
+    // core side spill register (maybe is not necessary ?)
+    isochronous_spill_register #(
+      .T (acc_resp_t),
+      .Bypass (!IsoCrossing)
+    ) i_spill_register_acc_demux_resp (
+      .src_clk_i   ( clk_i          ),
+      .src_rst_ni  ( rst_ni         ),
+      .src_valid_i ( acc_pvalid_reg ),
+      .src_ready_o ( acc_pready_reg ),
+      .src_data_i  ( acc_resp_reg   ),
+      .dst_clk_i   ( clk_i          ),
+      .dst_rst_ni  ( rst_ni         ),
+      .dst_valid_o ( acc_pvalid_i   ),
+      .dst_ready_i ( acc_pready_o   ),
+      .dst_data_o  ( acc_resp_i     )
+    );
     // instruction LO cache
     snitch_cluster_pkg::narrow_out_req_t axi_inst_to_cut_req;
     snitch_cluster_pkg::narrow_out_resp_t axi_inst_to_cut_rsp;
     snitch_cluster_pkg::sram_cfgs_t sram_cfgs_i = snitch_cluster_pkg::sram_cfgs_t'('0);
-    
     snitch_icache #(
           .NR_FETCH_PORTS     ( 1                ),
           .L0_LINE_COUNT      ( 8                ),
@@ -267,6 +300,30 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
           .axi_rsp_i        ( axi_inst_to_cut_rsp)
     );
 
+    // Acc port demux to fpu and muldiv and resp stream arbiter
+    stream_demux #(
+      .N_OUP ( 2 )
+    ) i_stream_demux_offload (
+      .inp_valid_i  ( acc_qvalid_o  ),
+      .inp_ready_o  ( acc_qready_i  ),
+      .oup_sel_i    ( acc_req_o.addr[$clog2(2)-1:0]        ),
+      .oup_valid_o  ( { acc_muldiv_qvalid, acc_fpu_qvalid} ),
+      .oup_ready_i  ( { acc_muldiv_qready, acc_fpu_qready} )
+    );
+    stream_arbiter #(
+      .DATA_T      ( acc_resp_t ),
+      .N_INP       ( 2          )
+    ) i_stream_arbiter_offload (
+      .clk_i       ( clk_i                              ),
+      .rst_ni      ( rst_ni                             ),
+      .inp_data_i  ( {acc_muldiv_resp,   acc_fpu_resp   } ),
+      .inp_valid_i ( {acc_muldiv_pvalid, acc_fpu_pvalid } ),
+      .inp_ready_o ( {acc_muldiv_pready, acc_fpu_pready } ),
+      .oup_data_o  ( acc_resp_reg                      ),
+      .oup_valid_o ( acc_pvalid_reg                ),
+      .oup_ready_i ( acc_pready_reg                )
+    );
+    // Snitch FPU sequencer and FPU instance
     reqrsp_req_t   data_fpu_req_o;
     reqrsp_rsp_t   data_fpu_rsp_i;
     snitch_fp_ss #( 
@@ -293,12 +350,12 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
       .sequencer_tracer_port_o    (),
       .hart_id_i                  (hart_id_i),
       // aac inteface - fpu side  
-      .acc_req_i                  (data_acc_req_o),
-      .acc_req_valid_i            (acc_qvalid_o),
-      .acc_req_ready_o            (acc_qready_i),
-      .acc_resp_o                 (data_acc_resp_i),
-      .acc_resp_valid_o           (acc_pvalid_i),
-      .acc_resp_ready_i           (acc_pready_o),
+      .acc_req_i                  (acc_req_o),
+      .acc_req_valid_i            (acc_fpu_qvalid),
+      .acc_req_ready_o            (acc_fpu_qready),
+      .acc_resp_o                 (acc_fpu_resp),
+      .acc_resp_valid_o           (acc_fpu_pvalid),
+      .acc_resp_ready_i           (acc_fpu_pready),
       // fpu lsu        
       .data_req_o                 (data_fpu_req_o),
       .data_rsp_i                 (data_fpu_rsp_i),
@@ -326,6 +383,40 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
       .core_events_o              (fpu_events)
     );
     
+    // muldiv unit and req spill register
+    spill_register  #(
+      .T      ( acc_req_t  ),
+      .Bypass ( 1'b1       )
+    ) i_spill_register_muldiv (
+      .clk_i   ,
+      .rst_ni  ( rst_ni              ),
+      .valid_i ( acc_muldiv_qvalid   ),
+      .ready_o ( acc_muldiv_qready   ),
+      .data_i  ( acc_req_o           ),
+      .valid_o ( acc_muldiv_qvalid_reg ),
+      .ready_i ( acc_muldiv_qready_reg ),
+      .data_o  ( acc_muldiv_req      )
+    );
+    snitch_shared_muldiv #(
+      .DataWidth (DataWidth),
+      .IdWidth   (IdWidthOut)
+    ) i_snitch_shared_muldiv (
+      .clk_i            ( clk_i                ),
+      .rst_ni           ( rst_ni               ),
+      .acc_qaddr_i      ( acc_muldiv_req.addr       ),
+      .acc_qid_i        ( acc_muldiv_req.id         ),
+      .acc_qdata_op_i   ( acc_muldiv_req.data_op    ),
+      .acc_qdata_arga_i ( acc_muldiv_req.data_arga  ),
+      .acc_qdata_argb_i ( acc_muldiv_req.data_argb  ),
+      .acc_qdata_argc_i ( acc_muldiv_req.data_argc  ),
+      .acc_qvalid_i     ( acc_muldiv_qvalid_reg),
+      .acc_qready_o     ( acc_muldiv_qready_reg),
+      .acc_pdata_o      ( acc_muldiv_resp.data ),
+      .acc_pid_o        ( acc_muldiv_resp.id   ),
+      .acc_perror_o     ( acc_muldiv_resp.error),
+      .acc_pvalid_o     ( acc_muldiv_pvalid    ),
+      .acc_pready_i     ( acc_muldiv_pready    )
+    );
 
     // convert CORE reqrsp data channel to an AXI channel
     snitch_cluster_pkg::narrow_out_req_t axi_core_data_to_cut_req;

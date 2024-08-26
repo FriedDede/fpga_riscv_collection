@@ -23,3 +23,9 @@ gmon.out
 # Installation directories
 /.venv/
 /tools/
+
+.project
+.library*
+*bender*
+.settings/*
+.github/*
