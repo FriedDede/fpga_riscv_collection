@@ -27,5 +27,8 @@ gmon.out
 .project
 .library*
 *bender*
-.settings/*
-.github/*
+.settings/
+.github/
+
+.clang*
+

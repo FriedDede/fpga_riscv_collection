@@ -13,134 +13,241 @@
 `include "axi_typedef.svh"
 `include "hbm_axi.svh"
 
-module u55_snitch_sim (
-  input                 sys_clk_p       ,  // 100 MHz Clock for PCIe
-  input                 sys_clk_n       ,  // 100 MHz Clock for PCIE
-  input  logic          prst_n          , //reset
-  input                 HBM_ref_clk_p   ,
-  input                 HBM_ref_clk_n   ,
-  output wire [7:0]     pci_exp_txp     ,
-  output wire [7:0]     pci_exp_txn     ,
-  input  wire [7:0]     pci_exp_rxp     ,
-  input  wire [7:0]     pci_exp_rxn     ,
-  input  logic          uart_rx         ,
-  output logic          uart_tx 
+module snitch_u55_sim (
+    input                 sys_clk_p       , // 100 MHz Clock for PCIe
+    input                 sys_clk_n       , // 100 MHz Clock for PCIE
+    input  logic          prst_n          , //reset
+    input                 HBM_ref_clk_p   ,
+    input                 HBM_ref_clk_n   ,
+    output wire [7:0]     pci_exp_txp     ,
+    output wire [7:0]     pci_exp_txn     ,
+    input  wire [7:0]     pci_exp_rxp     ,
+    input  wire [7:0]     pci_exp_rxn     ,
+    input  logic          uart_rx         ,
+    output logic          uart_tx
 );
 
-//localparam BOOT_ADDR        = 'h10000;
-localparam CORE_NUMBER      = 1;
-//localparam NBSlave          = CORE_NUMBER; // snitch clusters
-localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 64
-localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
-localparam AxiIdWidthMaster = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthIn + 2;  // 4 + 2 (each core exposes 3 channels)
-localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
+    //localparam BOOT_ADDR        = 'h10000;
+    localparam CORE_NUMBER      = 1;
+    //localparam NBSlave          = CORE_NUMBER; // snitch clusters
+    localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth; // 32
+    localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth; // 64
+    localparam AxiIdWidthMaster = snitch_cluster_pkg::NarrowIdWidthIn; // 4 
+    localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthIn + 2; // 4 + 2 (each core exposes 3 channels)
+    localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
-logic clk;
-logic core_areset_n;
+    // xbar config
+    localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
+    NoSlvPorts:         3,
+    NoMstPorts:         2,
+    MaxMstTrans:        1,
+    MaxSlvTrans:        1,
+    FallThrough:        1'b0,
+    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
+    PipelineStages:     1,
+    AxiIdWidthSlvPorts: AxiIdWidthMaster,
+    AxiIdUsedSlvPorts:  AxiIdWidthMaster,
+    UniqueIds:          '0,
+    AxiAddrWidth:       AxiAddrWidth,
+    AxiDataWidth:       AxiDataWidth,
+    NoAddrRules:        2
+    };
 
-// ---------------
-// Core
-// ---------------
+    // generate the address map
+    typedef axi_pkg::xbar_rule_32_t  rule_t;
+
+    function rule_t [1:0] addr_map_gen ();
+        // rom address 0x0 -> 0xffff
+        addr_map_gen[0] = rule_t'{
+        idx:        unsigned'(0),
+        start_addr: 32'h0000_0000,
+        end_addr:   32'h0000_ffff,
+        default:    '0
+        };
+        // dram address 0x8000000 -> 0x8000000 + clog2(size)
+        addr_map_gen[1] = rule_t'{
+        idx:        unsigned'(1),
+        start_addr: 32'h8000_0000,
+        end_addr:   32'h9fff_ffff, // 512MB dram
+        default:    '0
+        };
+    endfunction
+
+    localparam rule_t [1:0] AddrMap = addr_map_gen();
+
+
+    logic clk;
+    logic core_areset_n;
+
+    // ---------------
+    // Core
+    // ---------------
     for ( genvar i=0; i<CORE_NUMBER; ++i) begin
-        
-            snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
-            snitch_cluster_pkg::narrow_out_resp_t   axi_icache_snitch_resp;
-            snitch_cluster_pkg::narrow_out_req_t    [1:0]axi_data_snitch_req;
-            snitch_cluster_pkg::narrow_out_resp_t   [1:0]axi_data_snitch_resp;
 
-            snitch_core_axi #(
-                .AddrWidth          (AxiAddrWidth),
-                .DataWidth          (AxiDataWidth),
-                .IdWidthIn          (AxiIdWidthMaster),
-                .BootAddr           (32'h0000_0000),
-                .SnitchPMACfg       (snitch_cluster_pkg::SnitchPMACfg)     
-            ) i_snitch(
-                .clk_i              (clk),
-                .rst_ni             (core_areset_n),
-                .hart_id_i          (i),
-                .inst_out_req_o         (axi_icache_snitch_req     ),
-                .inst_out_resp_i        (axi_icache_snitch_resp    ),
-                .data_core_out_req_o    (axi_data_snitch_req    [0]),
-                .data_core_out_resp_i   (axi_data_snitch_resp   [0]),
-                .data_fpu_out_req_o     (axi_data_snitch_req    [1]),
-                .data_fpu_out_resp_i    (axi_data_snitch_resp   [1]) 
-            );
-            
-            AXI_BUS #(
-                .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-                .AXI_DATA_WIDTH ( AxiDataWidth     ),
-                .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
-                .AXI_USER_WIDTH ( AxiUserWidth     )
-            ) axi_snitch2mux[2:0]();
-            AXI_BUS #(
-                .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-                .AXI_DATA_WIDTH ( AxiDataWidth     ),
-                .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-                .AXI_USER_WIDTH ( AxiUserWidth     )
-            ) axi_mux2mem();
+        snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
+        snitch_cluster_pkg::narrow_out_resp_t   axi_icache_snitch_resp;
+        snitch_cluster_pkg::narrow_out_req_t    [1:0]axi_data_snitch_req;
+        snitch_cluster_pkg::narrow_out_resp_t   [1:0]axi_data_snitch_resp;
 
-            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0], axi_data_snitch_req[0])
-            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0])
-            
-            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[1], axi_data_snitch_req[1])
-            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], axi_snitch2mux[1])
+        snitch_core_axi #(
+            .AddrWidth          (AxiAddrWidth),
+            .DataWidth          (AxiDataWidth),
+            .IdWidthIn          (AxiIdWidthMaster),
+            .BootAddr           (32'h0000_0000),
+            .SnitchPMACfg       (snitch_cluster_pkg::SnitchPMACfg)
+        ) i_snitch(
+            .clk_i              (clk),
+            .rst_ni             (core_areset_n),
+            .hart_id_i          (i),
+            // icache
+            .inst_out_req_o         (axi_icache_snitch_req     ),
+            .inst_out_resp_i        (axi_icache_snitch_resp    ),
+            // integer core
+            .data_core_out_req_o    (axi_data_snitch_req    [0]),
+            .data_core_out_resp_i   (axi_data_snitch_resp   [0]),
+            // fpu
+            .data_fpu_out_req_o     (axi_data_snitch_req    [1]),
+            .data_fpu_out_resp_i    (axi_data_snitch_resp   [1])
+        );
 
-            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2], axi_icache_snitch_req)
-            `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2])
-            axi_mux_intf #(
-                .NO_SLV_PORTS       (3),
-                .SLV_AXI_ID_WIDTH   (AxiIdWidthMaster),
-                .MST_AXI_ID_WIDTH   (AxiIdWidthSlaves),
-                .AXI_ADDR_WIDTH     (AxiAddrWidth),
-                .AXI_DATA_WIDTH     (AxiDataWidth),
-                .AXI_USER_WIDTH     (AxiUserWidth)
-            ) i_mux (
-                .clk_i (clk),
-                .rst_ni (core_areset_n),
-                .test_i ('0),
-                .slv (axi_snitch2mux),
-                .mst (axi_mux2mem)
-            );
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_snitch2mux[2:0]();
 
-// ---------------
-// HBM - memory subsystem testing
-// ---------------
-            // ROM
-            logic                    rom_req;
-            logic [AxiAddrWidth-1:0] rom_addr;
-            logic [AxiDataWidth-1:0] rom_rdata;
-            logic                    rom_rvalid;
+        // AXI_BUS #(
+        //     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+        //     .AXI_DATA_WIDTH ( AxiDataWidth     ),
+        //     .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
+        //     .AXI_USER_WIDTH ( AxiUserWidth     )
+        // ) axi_mux2xbar();
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_xbar2mem[1:0]();
 
-            axi_to_mem_intf #(
-                .ADDR_WIDTH ( AxiAddrWidth),
-                .DATA_WIDTH ( AxiDataWidth),
-                .ID_WIDTH   ( AxiIdWidthSlaves),
-                .USER_WIDTH ( AxiUserWidth),
-                .NUM_BANKS  ( 1)
-            ) i_axi_to_mem (
-                .clk_i       ( clk),
-                .rst_ni      ( core_areset_n),
-                .busy_o      ( ),
-                .slv         ( axi_mux2mem),
-                .mem_req_o   ( rom_req),
-                .mem_gnt_i   ( '1),
-                .mem_addr_o  ( rom_addr),
-                .mem_wdata_o ( ),
-                .mem_strb_o  ( ),
-                .mem_atop_o  ( ),
-                .mem_we_o    ( ),
-                .mem_rvalid_i( rom_rvalid),
-                .mem_rdata_i ( rom_rdata) 
-            );
+        // integer core lsu
+        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0], axi_data_snitch_req[0])
+        `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0])
+        // fpu lsu
+        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[1], axi_data_snitch_req[1])
+        `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], axi_snitch2mux[1])
+        // icache 
+        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2], axi_icache_snitch_req)
+        `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2])
 
-            bootrom i_bootrom (
-                .clk_i      ( clk       ),
-                .req_i      ( rom_req   ),
-                .addr_i     ( rom_addr  ),
-                .rdata_o    ( rom_rdata ),
-                .rvalid_o   (rom_rvalid )
-            );
+        //axi_mux_intf #(
+        //    .SLV_AXI_ID_WIDTH(AxiIdWidthMaster),
+        //    .MST_AXI_ID_WIDTH(AxiIdWidthSlaves),
+        //    .AXI_ADDR_WIDTH(AxiAddrWidth),
+        //    .AXI_DATA_WIDTH(AxiDataWidth),
+        //    .AXI_USER_WIDTH(AxiUserWidth),
+        //    .NO_SLV_PORTS(3)
+        //) axi_mux_intf_instance(
+        //    .clk_i(clk),
+        //    .rst_ni(core_areset_n),
+        //    .test_i('0),
+        //    .slv(axi_snitch2mux),
+        //    .mst(axi_mux2xbar)
+        //);
+
+        axi_xbar_intf #(
+            .AXI_USER_WIDTH(AxiUserWidth),
+            .Cfg(xbar_cfg),
+            .rule_t(rule_t)
+        ) i_axi_xbar_intf (
+            .clk_i(clk),
+            .rst_ni(core_areset_n),
+            .test_i('0),
+            .slv_ports(axi_snitch2mux),
+            .mst_ports(axi_xbar2mem),
+            .addr_map_i(AddrMap),
+            .en_default_mst_port_i('0),
+            .default_mst_port_i('0)
+        );
+
+        // ---------------
+        // HBM - memory subsystem testing
+        // ---------------
+        // ROM
+        logic                    rom_req;
+        logic [AxiAddrWidth-1:0] rom_addr;
+        logic [AxiDataWidth-1:0] rom_rdata;
+        logic                    rom_rvalid;
+
+        axi_to_mem_intf #(
+            .ADDR_WIDTH ( AxiAddrWidth),
+            .DATA_WIDTH ( AxiDataWidth),
+            .ID_WIDTH   ( AxiIdWidthSlaves),
+            .USER_WIDTH ( AxiUserWidth),
+            .NUM_BANKS  ( 1)
+        ) i_axi_to_mem (
+            .clk_i       ( clk),
+            .rst_ni      ( core_areset_n),
+            .busy_o      ( ),
+            .slv         ( axi_xbar2mem[0]),
+            .mem_req_o   ( rom_req),
+            .mem_gnt_i   ( '1),
+            .mem_addr_o  ( rom_addr),
+            .mem_wdata_o ( ),
+            .mem_strb_o  ( ),
+            .mem_atop_o  ( ),
+            .mem_we_o    ( ),
+            .mem_rvalid_i( rom_rvalid),
+            .mem_rdata_i ( rom_rdata)
+        );
+
+        bootrom i_bootrom (
+            .clk_i      ( clk       ),
+            .req_i      ( rom_req   ),
+            .addr_i     ( rom_addr  ),
+            .rdata_o    ( rom_rdata ),
+            .rvalid_o   (rom_rvalid )
+        );
+
+        axi_bram_ctrl_0 bram(
+            .s_axi_aclk     (clk),
+            .s_axi_aresetn  (core_areset_n),
+            .s_axi_awid     ('0),
+            .s_axi_awaddr   ( axi_xbar2mem[1].aw_addr[18:0]),
+            .s_axi_awlen    ( axi_xbar2mem[1].aw_len    ),
+            .s_axi_awsize   ( axi_xbar2mem[1].aw_size   ),
+            .s_axi_awburst  ( axi_xbar2mem[1].aw_burst  ),
+            .s_axi_awlock   ( axi_xbar2mem[1].aw_lock   ),
+            .s_axi_awcache  ( axi_xbar2mem[1].aw_cache  ),
+            .s_axi_awprot   ( axi_xbar2mem[1].aw_prot   ),
+            .s_axi_awvalid  ( axi_xbar2mem[1].aw_valid  ),
+            .s_axi_awready  ( axi_xbar2mem[1].aw_ready  ),
+            .s_axi_wdata    ( axi_xbar2mem[1].w_data    ),
+            .s_axi_wstrb    ( axi_xbar2mem[1].w_strb    ),
+            .s_axi_wlast    ( axi_xbar2mem[1].w_last    ),
+            .s_axi_wvalid   ( axi_xbar2mem[1].w_valid   ),
+            .s_axi_wready   ( axi_xbar2mem[1].w_ready   ),
+            .s_axi_bid      (),
+            .s_axi_bresp    ( axi_xbar2mem[1].b_resp    ),
+            .s_axi_bvalid   ( axi_xbar2mem[1].b_valid   ),
+            .s_axi_bready   ( axi_xbar2mem[1].b_ready   ),
+            .s_axi_arid     ('0),
+            .s_axi_araddr   ( axi_xbar2mem[1].ar_addr[18:0]),
+            .s_axi_arlen    ( axi_xbar2mem[1].ar_len    ),
+            .s_axi_arsize   ( axi_xbar2mem[1].ar_size   ),
+            .s_axi_arburst  ( axi_xbar2mem[1].ar_burst  ),
+            .s_axi_arlock   ( axi_xbar2mem[1].ar_lock   ),
+            .s_axi_arcache  ( axi_xbar2mem[1].ar_cache  ),
+            .s_axi_arprot   ( axi_xbar2mem[1].ar_prot   ),
+            .s_axi_arvalid  ( axi_xbar2mem[1].ar_valid  ),
+            .s_axi_arready  ( axi_xbar2mem[1].ar_ready  ),
+            .s_axi_rid      (),
+            .s_axi_rdata    ( axi_xbar2mem[1].r_data    ),
+            .s_axi_rresp    ( axi_xbar2mem[1].r_resp    ),
+            .s_axi_rlast    ( axi_xbar2mem[1].r_last    ),
+            .s_axi_rvalid   ( axi_xbar2mem[1].r_valid   ),
+            .s_axi_rready   ( axi_xbar2mem[1].r_ready   )
+        );
     end
 
     ////////////////////
@@ -193,45 +300,45 @@ logic core_areset_n;
     //`AXI_ASSIGN_MASTER_TO_HBM_ARIANE("S03", dram[3])
     // ... add other channels as needed
 
-// -------------------------
-// Clocking system and RESET
-// -------------------------
+    // -------------------------
+    // Clocking system and RESET
+    // -------------------------
     logic pll_locked;
 
     logic sys_rst_n_c;
     IBUF sys_reset_n_ibuf (.O(sys_rst_n_c), .I(prst_n));
 
     IBUFDS hbm_ref_clk (
-        .I(HBM_ref_clk_p), 
+        .I(HBM_ref_clk_p),
         .IB(HBM_ref_clk_n),
         .O(REF_CLK)
-        );
+    );
     BUFG hbm_ref_clk_bufg (
-        .I(REF_CLK), 
+        .I(REF_CLK),
         .O(HBM_REF_CLK)
-        );
+    );
 
     // we need to switch reset polarity for core reset
     logic clock_reset;
     assign clock_reset = ~sys_rst_n_c;
 
     xlnx_clk_gen_solo i_xlnx_clk_gen (
-    .clk_out1 ( clk           ), // 50 MHz
-    .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-    .clk_out3 ( pcie_axi_clk  ), // 250 Mhz pcie and hbm clk
-    .reset    ( clock_reset     ),
-    .locked   ( pll_locked    ),
-    .clk_in1  ( REF_CLK ) // 100 Mhz ref clk
+        .clk_out1 ( clk           ), // 50 MHz
+        .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
+        .clk_out3 ( pcie_axi_clk  ), // 250 Mhz pcie and hbm clk
+        .reset    ( clock_reset     ),
+        .locked   ( pll_locked    ),
+        .clk_in1  ( REF_CLK ) // 100 Mhz ref clk
     );
 
     IBUFDS_GTE4 #(
     .REFCLK_HROW_CK_SEL ( 2'b00 )
     ) IBUFDS_GTE4_inst (
-    .O     ( sys_clk_gt ),
-    .ODIV2 ( sys_clk    ),
-    .CEB   ( 1'b0            ),
-    .I     ( sys_clk_p       ),
-    .IB    ( sys_clk_n       )
+        .O     ( sys_clk_gt ),
+        .ODIV2 ( sys_clk    ),
+        .CEB   ( 1'b0            ),
+        .I     ( sys_clk_p       ),
+        .IB    ( sys_clk_n       )
     );
 
     // ndmreset_n is driven high when pll locks and the board releases his external reset
@@ -256,8 +363,8 @@ logic core_areset_n;
     );
 
 
-// -----------------
-// END
-// -----------------
+    // -----------------
+    // END
+    // -----------------
 
 endmodule
