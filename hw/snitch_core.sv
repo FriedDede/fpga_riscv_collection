@@ -14,25 +14,23 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   parameter int unsigned DataWidth          = 64,
   /// AXI: id width in.
   parameter int unsigned IdWidthIn          = 4,
-  parameter int unsigned IdWidthOut         = IdWidthIn,
+  parameter int unsigned IdWidthAcc         = 5,
   /// AXI: user width.
   parameter int unsigned UserWidth          = 1,
-  /// fpu setup
-  parameter fpnew_pkg::fpu_implementation_t FPUImplementation = '0,
   /// Boot address of core.
-  parameter logic [31:0] BootAddr           = 32'h0001_0000,
+  parameter logic [31:0] BootAddr           = 32'h0000_0000,
   /// Reduced-register extension
   parameter bit          RVE                = 0,
   /// Enable F and D Extension
   parameter bit          RVF                = 1,
   parameter bit          RVD                = 1,
-  parameter bit          XDivSqrt           = 0,
+  parameter bit          XDivSqrt           = 1,
   parameter bit          XF8                = 1,
   parameter bit          XF8ALT             = 1,
   parameter bit          XF16               = 1,
   parameter bit          XF16ALT            = 1,
-  parameter bit          XFVEC              = 0,
-  parameter bit          XFDOTP             = 0,
+  parameter bit          XFVEC              = 1,
+  parameter bit          XFDOTP             = 1,
   /// Enable Snitch DMA
   parameter bit          Xdma               = 0,
   /// Has `frep` support.
@@ -44,8 +42,8 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   /// Has virtual memory support.
   parameter bit          VMSupport          = 0,
 
-  parameter int unsigned NumIntOutstandingLoads = 1,
-  parameter int unsigned NumIntOutstandingMem = 1,
+  parameter int unsigned NumIntOutstandingLoads = 16,
+  parameter int unsigned NumIntOutstandingMem = 16,
 
   parameter int unsigned NumDTLBEntries = 0,
   parameter int unsigned NumITLBEntries = 0,
@@ -79,46 +77,54 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   output  snitch_cluster_pkg::narrow_out_req_t    data_fpu_out_req_o,
   input   snitch_cluster_pkg::narrow_out_resp_t   data_fpu_out_resp_i
 );
-  localparam bit XFauxMerged  = (FPUImplementation.UnitTypes[3] == fpnew_pkg::MERGED);
-  localparam bit FPEn = RVF | RVD | XF16 | XF16ALT | XF8 | XF8ALT | XFVEC | XFauxMerged | XFDOTP;
-  localparam int unsigned FLEN = RVD     ? 64 : // D ext.
-  RVF     ? 32 : // F ext.
-  XF16    ? 16 : // Xf16 ext.
-  XF16ALT ? 16 : // Xf16alt ext.
-  XF8     ? 8 : // Xf8 ext.
-  XF8ALT  ? 8 : // Xf8alt ext.
-  0; // Unused in case of no FP
-  typedef logic [AddrWidth-1:0]       addr_t;
-  typedef logic [DataWidth-1:0]       data_t;
-  typedef logic [DataWidth/8-1:0]     strb_t;
-  typedef logic [IdWidthIn-1:0]       id_mst_t;
-  typedef logic [IdWidthOut-1:0]      id_slv_t;
-  typedef logic [UserWidth-1:0]       user_t;
-  // bus_typedefs
-  // Regbus peripherals.
-  typedef struct packed {
-    snitch_pkg::acc_addr_e  addr;
-    logic [4:0]             id;
-    logic [31:0]            data_op;
-    data_t                  data_arga;
-    data_t                  data_argb;
-    addr_t                  data_argc;
-  } acc_req_t;
-  typedef struct packed {
-    logic [4:0] id;
-    logic       error;
-    data_t      data;
-  } acc_resp_t;
 
-  `AXI_TYPEDEF_ALL(axi_mst, addr_t, id_mst_t, data_t, strb_t, user_t)
-  `AXI_TYPEDEF_ALL(axi_slv, addr_t, id_slv_t, data_t, strb_t, user_t)
-  `REQRSP_TYPEDEF_ALL(reqrsp, addr_t, data_t, strb_t)
-  `REG_BUS_TYPEDEF_REQ(reg_req_t, addr_t, data_t, strb_t)
-  `REG_BUS_TYPEDEF_RSP(reg_rsp_t, data_t)
+  // FPU CONFIG
+    localparam int unsigned NumFPOutstandingLoads = 16;
+    localparam int unsigned NumFPOutstandingMem = 16;
+    localparam int unsigned NumFPUSequencerInstr = 0;
+    localparam fpnew_pkg::fpu_implementation_t FPUImplementation = fpnew_pkg::CUSTOM_SNITCH;
+    localparam bit XFauxMerged  = (FPUImplementation.UnitTypes[3] == fpnew_pkg::MERGED);
+    localparam bit FPEn = RVF | RVD | XF16 | XF16ALT | XF8 | XF8ALT | XFVEC | XFauxMerged | XFDOTP;
+    localparam int unsigned FLEN =  RVD     ? 64 : // D ext.
+                                    RVF     ? 32 : // F ext.
+                                    XF16    ? 16 : // Xf16 ext.
+                                    XF16ALT ? 16 : // Xf16alt ext.
+                                    XF8     ? 8 : // Xf8 ext.
+                                    XF8ALT  ? 8 : // Xf8alt ext.
+                                    0; // Unused in case of no FP
+  
+  // BUS DATATYPES AND STRUCTS
+    typedef logic [AddrWidth-1:0]       addr_t;
+    typedef logic [DataWidth-1:0]       data_t;
+    typedef logic [DataWidth/8-1:0]     strb_t;
+    typedef logic [IdWidthIn-1:0]       id_mst_t;
+    typedef logic [IdWidthIn-1:0]      id_slv_t;
+    typedef logic [UserWidth-1:0]       user_t;
+    typedef struct packed {
+      snitch_pkg::acc_addr_e   addr;
+      logic [IdWidthAcc - 1:0] id;
+      logic [31:0]             data_op;
+      data_t                   data_arga;
+      data_t                   data_argb;
+      data_t                   data_argc;
+    } acc_req_t;
+    typedef struct packed {
+      logic [IdWidthAcc - 1:0] id;
+      logic       error;
+      data_t      data;
+    } acc_resp_t;
+
+    `AXI_TYPEDEF_ALL(axi_mst, addr_t, id_mst_t, data_t, strb_t, user_t)
+    `AXI_TYPEDEF_ALL(axi_slv, addr_t, id_slv_t, data_t, strb_t, user_t)
+    `REQRSP_TYPEDEF_ALL(reqrsp, addr_t, data_t, strb_t)
+    `REG_BUS_TYPEDEF_REQ(reg_req_t, addr_t, data_t, strb_t)
+    `REG_BUS_TYPEDEF_RSP(reg_rsp_t, data_t)
 
   // snitch perf counter
   snitch_pkg::core_events_t snitch_events;
   snitch_pkg::core_events_t fpu_events;
+  snitch_pkg::fpu_trace_port_t fpu_trace;
+  snitch_pkg::fpu_sequencer_trace_port_t fpu_ss_trace;
 
   // core <-> cache 
   addr_t         inst_addr_o;
@@ -132,6 +138,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   reqrsp_rsp_t   data_rsp_i;
 
   // core <-> acc 
+  logic          caq_valid_i;
   logic          acc_qvalid_o;
   logic          acc_qready_i;
   logic          acc_pvalid_i;
@@ -218,17 +225,17 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .acc_prsp_i       (acc_resp_i),
     .acc_pvalid_i     (acc_pvalid_i),
     .acc_pready_o     (acc_pready_o),
-    .caq_pvalid_i     (),
+    .caq_pvalid_i     (caq_valid_i),
     // data req_rsp channel
     .data_req_o       (data_req_o),
     .data_rsp_i       (data_rsp_i),
     // we don't use address translaction
     .ptw_valid_o      (),
-    .ptw_ready_i      (),
+    .ptw_ready_i      ('0),
     .ptw_va_o         (),
     .ptw_ppn_o        (),
-    .ptw_pte_i        (),
-    .ptw_is_4mega_i   (),
+    .ptw_pte_i        ('0),
+    .ptw_is_4mega_i   ('0),
     // we don't use fpu at the moment
     .fpu_rnd_mode_o   (fpu_rnd_mode),
     .fpu_fmt_mode_o   (fpu_fmt_mode),
@@ -237,7 +244,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .core_events_o    (snitch_events),
     // we don't use hw barriers
     .barrier_o        (),
-    .barrier_i        ()
+    .barrier_i        ('0)
   );
 
   // core side spill register (maybe is not necessary ?)
@@ -329,6 +336,9 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   snitch_fp_ss #(
     .DataWidth  (DataWidth),
     .AddrWidth  (AddrWidth),
+    .NumFPOutstandingLoads (NumFPOutstandingLoads),
+    .NumFPOutstandingMem (NumFPOutstandingMem),
+    .NumFPUSequencerInstr (NumFPUSequencerInstr),
     .dreq_t (reqrsp_req_t),
     .drsp_t (reqrsp_rsp_t),
     .acc_req_t (acc_req_t),
@@ -346,8 +356,8 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   ) i_snitch_fp_ss (
     .clk_i                      (clk_i),
     .rst_i                      (~rst_ni),
-    .trace_port_o               (),
-    .sequencer_tracer_port_o    (),
+    .trace_port_o               (fpu_trace),
+    .sequencer_tracer_port_o    (fpu_ss_trace),
     .hart_id_i                  (hart_id_i),
     // aac inteface - fpu side  
     .acc_req_i                  (acc_req_o),
@@ -365,21 +375,21 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .fpu_status_o               (fpu_status),
     // ssr        
     .ssr_raddr_o                (),
-    .ssr_rdata_i                (),
+    .ssr_rdata_i                ('0),
     .ssr_rvalid_o               (),
-    .ssr_rready_i               (),
+    .ssr_rready_i               ('0),
     .ssr_rdone_o                (),
     .ssr_waddr_o                (),
     .ssr_wdata_o                (),
     .ssr_wvalid_o               (),
-    .ssr_wready_i               (),
+    .ssr_wready_i               ('0),
     .ssr_wdone_o                (),
     // ssr control        
-    .streamctl_done_i           (),
-    .streamctl_valid_i          (),
+    .streamctl_done_i           ('0),
+    .streamctl_valid_i          ('0),
     .streamctl_ready_o          (),
     // caqq       
-    .caq_pvalid_o               (),
+    .caq_pvalid_o               (caq_valid_i),
     .core_events_o              (fpu_events)
   );
 
@@ -399,7 +409,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   );
   snitch_shared_muldiv #(
     .DataWidth (DataWidth),
-    .IdWidth   (IdWidthOut)
+    .IdWidth   (IdWidthAcc)
   ) i_snitch_shared_muldiv (
     .clk_i            ( clk_i                ),
     .rst_ni           ( rst_ni               ),
@@ -460,7 +470,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
   // decouple CORE data AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -479,7 +489,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
   // decouple FPU data AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -498,7 +508,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
   // decouple inst AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),

@@ -33,20 +33,20 @@ module snitch_u55_sim (
     localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth; // 32
     localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth; // 64
     localparam AxiIdWidthMaster = snitch_cluster_pkg::NarrowIdWidthIn; // 4 
-    localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthIn + 2; // 4 + 2 (each core exposes 3 channels)
+    localparam AxiIdWidthSlaves = snitch_cluster_pkg::NarrowIdWidthIn + $clog2(3); // 4 + 2 (each core exposes 3 channels)
     localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
     // xbar config
     localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
     NoSlvPorts:         3,
     NoMstPorts:         2,
-    MaxMstTrans:        1,
-    MaxSlvTrans:        1,
+    MaxMstTrans:        16,
+    MaxSlvTrans:        16,
     FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
+    LatencyMode:        axi_pkg::CUT_ALL_AX,
     PipelineStages:     1,
     AxiIdWidthSlvPorts: AxiIdWidthMaster,
-    AxiIdUsedSlvPorts:  AxiIdWidthMaster,
+    AxiIdUsedSlvPorts:  2,
     UniqueIds:          '0,
     AxiAddrWidth:       AxiAddrWidth,
     AxiDataWidth:       AxiDataWidth,
@@ -75,13 +75,13 @@ module snitch_u55_sim (
 
     localparam rule_t [1:0] AddrMap = addr_map_gen();
 
-
     logic clk;
     logic core_areset_n;
 
     // ---------------
     // Core
     // ---------------
+    
     for ( genvar i=0; i<CORE_NUMBER; ++i) begin
 
         snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
@@ -116,13 +116,6 @@ module snitch_u55_sim (
             .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_snitch2mux[2:0]();
-
-        // AXI_BUS #(
-        //     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-        //     .AXI_DATA_WIDTH ( AxiDataWidth     ),
-        //     .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
-        //     .AXI_USER_WIDTH ( AxiUserWidth     )
-        // ) axi_mux2xbar();
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
             .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -140,20 +133,6 @@ module snitch_u55_sim (
         `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2], axi_icache_snitch_req)
         `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2])
 
-        //axi_mux_intf #(
-        //    .SLV_AXI_ID_WIDTH(AxiIdWidthMaster),
-        //    .MST_AXI_ID_WIDTH(AxiIdWidthSlaves),
-        //    .AXI_ADDR_WIDTH(AxiAddrWidth),
-        //    .AXI_DATA_WIDTH(AxiDataWidth),
-        //    .AXI_USER_WIDTH(AxiUserWidth),
-        //    .NO_SLV_PORTS(3)
-        //) axi_mux_intf_instance(
-        //    .clk_i(clk),
-        //    .rst_ni(core_areset_n),
-        //    .test_i('0),
-        //    .slv(axi_snitch2mux),
-        //    .mst(axi_mux2xbar)
-        //);
 
         axi_xbar_intf #(
             .AXI_USER_WIDTH(AxiUserWidth),
@@ -212,7 +191,7 @@ module snitch_u55_sim (
         axi_bram_ctrl_0 bram(
             .s_axi_aclk     (clk),
             .s_axi_aresetn  (core_areset_n),
-            .s_axi_awid     ('0),
+            .s_axi_awid     ( axi_xbar2mem[1].aw_id),
             .s_axi_awaddr   ( axi_xbar2mem[1].aw_addr[18:0]),
             .s_axi_awlen    ( axi_xbar2mem[1].aw_len    ),
             .s_axi_awsize   ( axi_xbar2mem[1].aw_size   ),
@@ -227,11 +206,11 @@ module snitch_u55_sim (
             .s_axi_wlast    ( axi_xbar2mem[1].w_last    ),
             .s_axi_wvalid   ( axi_xbar2mem[1].w_valid   ),
             .s_axi_wready   ( axi_xbar2mem[1].w_ready   ),
-            .s_axi_bid      (),
+            .s_axi_bid      ( axi_xbar2mem[1].b_id),
             .s_axi_bresp    ( axi_xbar2mem[1].b_resp    ),
             .s_axi_bvalid   ( axi_xbar2mem[1].b_valid   ),
             .s_axi_bready   ( axi_xbar2mem[1].b_ready   ),
-            .s_axi_arid     ('0),
+            .s_axi_arid     ( axi_xbar2mem[1].ar_id),
             .s_axi_araddr   ( axi_xbar2mem[1].ar_addr[18:0]),
             .s_axi_arlen    ( axi_xbar2mem[1].ar_len    ),
             .s_axi_arsize   ( axi_xbar2mem[1].ar_size   ),
@@ -241,13 +220,15 @@ module snitch_u55_sim (
             .s_axi_arprot   ( axi_xbar2mem[1].ar_prot   ),
             .s_axi_arvalid  ( axi_xbar2mem[1].ar_valid  ),
             .s_axi_arready  ( axi_xbar2mem[1].ar_ready  ),
-            .s_axi_rid      (),
+            .s_axi_rid      ( axi_xbar2mem[1].r_id),
             .s_axi_rdata    ( axi_xbar2mem[1].r_data    ),
             .s_axi_rresp    ( axi_xbar2mem[1].r_resp    ),
             .s_axi_rlast    ( axi_xbar2mem[1].r_last    ),
             .s_axi_rvalid   ( axi_xbar2mem[1].r_valid   ),
             .s_axi_rready   ( axi_xbar2mem[1].r_ready   )
         );
+        assign axi_xbar2mem[1].b_user = '0;
+        assign axi_xbar2mem[1].r_user = '0;
     end
 
     ////////////////////

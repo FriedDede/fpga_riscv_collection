@@ -2,7 +2,7 @@ CROSSCOMPILE ?= riscv64-unknown-elf-
 CC = ${CROSSCOMPILE}gcc
 PYTHON=python
 
-CFLAGS = -Os -ggdb -march=rv32i -mabi=ilp32 -Wall -mcmodel=medany -mexplicit-relocs
+CFLAGS = -Os -ggdb -march=rv32imf -mabi=ilp32 -Wall -mcmodel=medany -mexplicit-relocs
 CCASFLAGS = -mcmodel=medany -mexplicit-relocs
 LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles
 

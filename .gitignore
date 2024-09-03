@@ -32,3 +32,6 @@ gmon.out
 
 .clang*
 
+.Xil/*
+*Vivado*
+*vivado*
