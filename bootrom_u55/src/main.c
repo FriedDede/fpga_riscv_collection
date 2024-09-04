@@ -1,7 +1,9 @@
 #include "platform.h"
-
+#include "uart.h"
 int main()
 {   
+    init_uart(CORE_CLK,UART_BAUD);
+
     int *dram_head = (int*) 0x80000000;
     float *dram_head_float = (float*) 0x80000000;
     float j = 0.0f;
@@ -18,6 +20,8 @@ int main()
     }
 
     j = 0.0f;
+    
+    print_uart("Hello from snitch");
     
     // jump to the address
     __asm__ volatile(

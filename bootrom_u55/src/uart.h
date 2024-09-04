@@ -1,8 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
-#define UART_BASE 0x10000000
+#include "platform.h"
 
 #define UART_RBR UART_BASE + 0
 #define UART_THR UART_BASE + 0
@@ -16,12 +15,12 @@
 #define UART_DLAB_LSB UART_BASE + 0
 #define UART_DLAB_MSB UART_BASE + 4
 
-void init_uart();
+void init_uart(uint32_t freq, uint32_t baud);
 
 void print_uart(const char* str);
 
 void print_uart_int(uint32_t addr);
 
-void print_uart_addr(uint64_t addr);
+void print_uart_addr(uint32_t addr);
 
 void print_uart_byte(uint8_t byte);

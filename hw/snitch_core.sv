@@ -67,6 +67,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   input   logic                                   clk_i,
   input   logic                                   rst_ni,
   input   logic [31:0]                            hart_id_i,
+  input   snitch_pkg::interrupts_t                irq_i,            
 
   output  snitch_cluster_pkg::narrow_out_req_t    inst_out_req_o,
   input   snitch_cluster_pkg::narrow_out_resp_t   inst_out_resp_i,
@@ -209,7 +210,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .clk_i            (clk_i),
     .rst_i            (~rst_ni ),
     .hart_id_i        (hart_id_i),
-    .irq_i            ('0),
+    .irq_i            (irq_i),
     // to instruction cache
     .flush_i_valid_o  (flush_i_valid_o),
     .flush_i_ready_i  (flush_i_ready_i),

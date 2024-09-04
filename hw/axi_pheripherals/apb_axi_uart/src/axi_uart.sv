@@ -30,7 +30,7 @@ module axi_uart#(
     .AXI4_ID_WIDTH      ( AxiIdWidth   ),
     .AXI4_USER_WIDTH    ( AxiUserWidth ),
     .BUFF_DEPTH_SLAVE   ( 2            ),
-    .APB_ADDR_WIDTH     ( 32           )
+    .APB_ADDR_WIDTH     ( 12           )
     ) i_axi2apb_64_32_uart (
         .ACLK      ( clk_i          ),
         .ARESETn   ( rst_ni         ),

@@ -15,9 +15,7 @@ module axi_plic#(
     AXI_BUS.Slave plic,
     // overflow and cmp interrupt
     input  logic [NIrqSrcs - 1 : 0] plic_irq_i,
-    output logic [(NHARTS * 2) - 1 : 0] plic_irq_o,
-    output logic tx_o,
-    input  logic rx_i
+    output logic [(NHARTS * 2) - 1 : 0] plic_irq_o
 );
 
     logic         plic_penable;
@@ -35,7 +33,7 @@ module axi_plic#(
     .AXI4_ID_WIDTH      ( AxiIdWidth   ),
     .AXI4_USER_WIDTH    ( AxiUserWidth ),
     .BUFF_DEPTH_SLAVE   ( 2            ),
-    .APB_ADDR_WIDTH     ( 32           )
+    .APB_ADDR_WIDTH     ( 27           )
     ) i_axi2apb_64_32_uart (
         .ACLK      ( clk_i          ),
         .ARESETn   ( rst_ni         ),

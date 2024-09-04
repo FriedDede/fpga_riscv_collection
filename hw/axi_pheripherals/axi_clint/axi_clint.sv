@@ -26,11 +26,12 @@ module axi_clint#(
     `AXI_TYPEDEF_ALL(axi_slv, addr_t, id_slv_t, data_t, strb_t, user_t)
     axi_slv_req_t clint_req;
     axi_slv_resp_t clint_resp; 
+
     `AXI_ASSIGN_TO_REQ(clint_req, clint)
-    `AXI_ASSIGN_TO_RESP(clint_resp, clint)
+    `AXI_ASSIGN_FROM_RESP(clint, clint_resp)
 
 clint #(
-    .AXI_ADDR_WIDTH(AddrWidth),
+    .AXI_ADDR_WIDTH(12), //4k device
     .AXI_DATA_WIDTH(DataWidth),
     .AXI_ID_WIDTH(IdWidthIn),
     .NR_CORES(NR_CORES),

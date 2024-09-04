@@ -13,9 +13,7 @@ module axi_timer#(
     input rst_ni,
     AXI_BUS.Slave timer,
     // overflow and cmp interrupt
-    output logic [(TimerCount * 2) - 1 : 0] timer_irq,
-    output logic tx_o,
-    input  logic rx_i
+    output logic [(TimerCount * 2) - 1 : 0] timer_irq
 );
 
         
@@ -34,13 +32,13 @@ module axi_timer#(
     .AXI4_ID_WIDTH      ( AxiIdWidth   ),
     .AXI4_USER_WIDTH    ( AxiUserWidth ),
     .BUFF_DEPTH_SLAVE   ( 2            ),
-    .APB_ADDR_WIDTH     ( 32           )
+    .APB_ADDR_WIDTH     ( 12           )
     ) i_axi2apb_64_32_uart (
         .ACLK      ( clk_i          ),
         .ARESETn   ( rst_ni         ),
         .test_en_i ( 1'b0           ),
         .AWID_i    ( timer.aw_id     ),
-        .AWADDR_i  ( timer.aw_addr   ),
+        .AWADDR_i  ( timer.aw_addr[12:0]),
         .AWLEN_i   ( timer.aw_len    ),
         .AWSIZE_i  ( timer.aw_size   ),
         .AWBURST_i ( timer.aw_burst  ),
@@ -64,7 +62,7 @@ module axi_timer#(
         .BUSER_o   ( timer.b_user    ),
         .BREADY_i  ( timer.b_ready   ),
         .ARID_i    ( timer.ar_id     ),
-        .ARADDR_i  ( timer.ar_addr   ),
+        .ARADDR_i  ( timer.ar_addr[12:0]),
         .ARLEN_i   ( timer.ar_len    ),
         .ARSIZE_i  ( timer.ar_size   ),
         .ARBURST_i ( timer.ar_burst  ),
@@ -94,7 +92,7 @@ module axi_timer#(
     );
 
     apb_timer #(
-        .APB_ADDR_WIDTH ( 32 ),
+        .APB_ADDR_WIDTH ( 12 ),
         .TIMER_CNT      ( TimerCount )
     ) i_timer (
         .HCLK    ( clk_i            ),

@@ -69,7 +69,7 @@ void print_uart_int(uint32_t addr)
     }
 }
 
-void print_uart_addr(uint64_t addr)
+void print_uart_addr(uint32_t addr)
 {
     int i;
     for (i = 7; i > -1; i--)
