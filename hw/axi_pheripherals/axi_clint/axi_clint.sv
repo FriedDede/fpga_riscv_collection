@@ -31,7 +31,7 @@ module axi_clint#(
     `AXI_ASSIGN_FROM_RESP(clint, clint_resp)
 
 clint #(
-    .AXI_ADDR_WIDTH(12), //4k device
+    .AXI_ADDR_WIDTH(AddrWidth), //4k device
     .AXI_DATA_WIDTH(DataWidth),
     .AXI_ID_WIDTH(IdWidthIn),
     .NR_CORES(NR_CORES),

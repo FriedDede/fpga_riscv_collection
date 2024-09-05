@@ -6,5 +6,6 @@ Some of the IPs have stand-alone test benches. All IPs inside the `hw` directory
 - `<ip_name>`: each directory contains one IP that is instantiated in the cluster design, e.g., they are not stand-alone.
   - `doc`: documentation if existing
   - `src`: RTL sources
+  - `include` : RTL libraries if exists
   - `test`: Standalone testbenches if existing
   - `util`: Helper scripts to run standalone test benches if existing

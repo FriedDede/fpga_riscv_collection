@@ -35,3 +35,6 @@ gmon.out
 .Xil/*
 *Vivado*
 *vivado*
+
+.library_mapping.xml
+.project

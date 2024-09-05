@@ -1,30 +1,9 @@
 ![CI](https://github.com/pulp-platform/snitch_cluster/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-# Snitch Cluster
+# RISCV core Cluster
 
-This repository hosts the hardware and software for the Snitch cluster and its generator. Snitch is a high-efficiency compute cluster platform focused on floating-point workloads. It is developed as part of the PULP project, a joint effort between ETH Zurich and the University of Bologna.
-
-## Getting Started
-
-To get started, check out the [getting started guide](https://pulp-platform.github.io/snitch_cluster/ug/getting_started.html).
-
-## Content
-
-What can you expect to find in this repository?
-
-- The RISC-V [Snitch integer core](https://pulp-platform.github.io/snitch_cluster/rm/snitch.html). This can be useful stand-alone if you are just interested in re-using the core for your project, e.g., as a tiny control core or you want to make a peripheral smart. The sky is the limit.
-- The [Snitch cluster](https://pulp-platform.github.io/snitch_cluster/rm/snitch_cluster.html). A highly configurable cluster containing one to many integer cores with optional floating-point capabilities as well as our custom ISA extensions `Xssr`, `Xfrep`, and `Xdma`.
-- A runtime and example applications for the Snitch cluster.
-- RTL simulation environments for Verilator, Questa Advanced Simulator, and VCS, as well as configurations for our [Banshee system simulator](https://github.com/pulp-platform/banshee)
-
-This code was previously hosted in the [Snitch monorepo](https://github.com/pulp-platform/snitch) and was spun off into its own repository to simplify maintenance and dependency handling. Note that our Snitch-based manycore system [Occamy](https://github.com/pulp-platform/occamy) has also moved.
-
-## Tool Requirements
-
-* `verilator >= v4.1`
-* `bender >= v0.27.0`
-
+This repository hosts the hardware and software for a RISCV core cluster. It is based on the work of the PULP project, a joint effort between ETH Zurich and the University of Bologna.
 ## License
 
 Snitch is being made available under permissive open source licenses.
