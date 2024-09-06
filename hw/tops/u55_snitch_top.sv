@@ -261,7 +261,7 @@ assign uncore_areset_n = core_areset_n;
             end
         end
         axi_clint #(
-            .AddrWidth(AxiDataWidth),
+            .AddrWidth(AxiAddrWidth),
             .DataWidth(AxiDataWidth),
             .IdWidthIn(AxiIdWidthToUncore),
             .UserWidth(AxiUserWidth),

@@ -298,13 +298,13 @@ package fpnew_pkg;
   };
 
   localparam fpu_implementation_t CUSTOM_SNITCH = '{
-  PipeRegs:   '{default: 1},
+  PipeRegs:   '{default: 3},
   UnitTypes:  '{'{default: PARALLEL}, // ADDMUL
                 '{default: MERGED}, // DIVSQRT
                 '{default: PARALLEL}, // NONCOMP
                 '{default: MERGED},   // CONV
-                '{default: MERGED}},  // DOTP
-  PipeConfig: BEFORE
+                '{default: DISABLED}},  // DOTP
+  PipeConfig: INSIDE
   };
 
   // Stochastic rounding only supported by DOTP operation group block

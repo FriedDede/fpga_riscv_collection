@@ -36,5 +36,5 @@ gmon.out
 *Vivado*
 *vivado*
 
-.library_mapping.xml
-.project
+*.library_mapping.xml*
+*.project*

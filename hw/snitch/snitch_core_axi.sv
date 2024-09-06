@@ -25,12 +25,12 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   parameter bit          RVF                = 1,
   parameter bit          RVD                = 1,
   parameter bit          XDivSqrt           = 1,
-  parameter bit          XF8                = 1,
-  parameter bit          XF8ALT             = 1,
-  parameter bit          XF16               = 1,
-  parameter bit          XF16ALT            = 1,
-  parameter bit          XFVEC              = 1,
-  parameter bit          XFDOTP             = 1,
+  parameter bit          XF8                = 0,
+  parameter bit          XF8ALT             = 0,
+  parameter bit          XF16               = 0,
+  parameter bit          XF16ALT            = 0,
+  parameter bit          XFVEC              = 0,
+  parameter bit          XFDOTP             = 0,
   /// Enable Snitch DMA
   parameter bit          Xdma               = 0,
   /// Has `frep` support.
@@ -168,12 +168,12 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   acc_resp_t     acc_muldiv_resp;
   acc_req_t      acc_muldiv_req;
 
-  // core <-> fpu control 
+// core <-> fpu control 
   fpnew_pkg::roundmode_e fpu_rnd_mode;
   fpnew_pkg::fmt_mode_t  fpu_fmt_mode;
   fpnew_pkg::status_t    fpu_status;
 
-  // snitch integer core
+// snitch integer core
   snitch #(
     .AddrWidth (AddrWidth),
     .DataWidth (DataWidth),
@@ -250,7 +250,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .barrier_i        ('0)
   );
 
-  // core side spill register (maybe is not necessary ?)
+// core side spill register (maybe is not necessary ?)
   isochronous_spill_register #(
     .T (acc_resp_t),
     .Bypass (!IsoCrossing)
@@ -266,7 +266,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .dst_ready_i ( acc_pready_o   ),
     .dst_data_o  ( acc_resp_i     )
   );
-  // instruction LO cache
+// instruction LO cache
   snitch_cluster_pkg::narrow_out_req_t axi_inst_to_cut_req;
   snitch_cluster_pkg::narrow_out_resp_t axi_inst_to_cut_rsp;
   snitch_cluster_pkg::sram_cfgs_t sram_cfgs_i = snitch_cluster_pkg::sram_cfgs_t'('0);
@@ -310,7 +310,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .axi_rsp_i        ( axi_inst_to_cut_rsp)
   );
 
-  // Acc port demux to fpu and muldiv and resp stream arbiter
+// Acc port demux to fpu and muldiv and resp stream arbiter
   stream_demux #(
   .N_OUP ( 2 )
   ) i_stream_demux_offload (
@@ -333,9 +333,21 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .oup_valid_o ( acc_pvalid_reg                ),
     .oup_ready_i ( acc_pready_reg                )
   );
-  // Snitch FPU sequencer and FPU instance
+// Snitch FPU sequencer and FPU instance
   reqrsp_req_t   data_fpu_req_o;
   reqrsp_rsp_t   data_fpu_rsp_i;
+  // if necessary we can run the fpu at a different clock, will need to resync the axi channels in this case
+  logic fpu_clk;
+  clk_int_div_static #(
+    .DIV_VALUE (2),
+    .ENABLE_CLOCK_IN_RESET ('1)
+  )i_clk_div(
+    .clk_i,
+    .rst_ni,
+    .en_i ('1),
+    .test_mode_en_i ('0),
+    .clk_o(fpu_clk)
+  );
   snitch_fp_ss #(
     .DataWidth  (DataWidth),
     .AddrWidth  (AddrWidth),
@@ -398,7 +410,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .core_events_o              (fpu_events)
   );
 
-  // muldiv unit and req spill register
+// muldiv unit and req spill register
   spill_register  #(
     .T      ( acc_req_t  ),
     .Bypass ( 1'b1       )
@@ -433,7 +445,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .acc_pready_i     ( acc_muldiv_pready    )
   );
 
-  // convert CORE reqrsp data channel to an AXI channel
+// convert CORE reqrsp data channel to an AXI channel
   snitch_cluster_pkg::narrow_out_req_t axi_core_data_to_cut_req;
   snitch_cluster_pkg::narrow_out_resp_t axi_core_data_to_cut_rsp;
   reqrsp_to_axi #(
@@ -453,7 +465,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .axi_rsp_i    (axi_core_data_to_cut_rsp)
   );
 
-  // convert FPU reqrsp data channel to an AXI channel
+// convert FPU reqrsp data channel to an AXI channel
   snitch_cluster_pkg::narrow_out_req_t axi_fpu_data_to_cut_req;
   snitch_cluster_pkg::narrow_out_resp_t axi_fpu_data_to_cut_rsp;
   reqrsp_to_axi #(
@@ -473,9 +485,9 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .axi_rsp_i    (axi_fpu_data_to_cut_rsp)
   );
 
-  // decouple CORE data AXI output port
+// decouple CORE data AXI output port
   axi_cut #(
-    .Bypass     ( '1 ),
+    .Bypass     ( '0 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -492,9 +504,9 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .mst_resp_i ( data_core_out_resp_i   )
   );
 
-  // decouple FPU data AXI output port
+// decouple FPU data AXI output port
   axi_cut #(
-    .Bypass     ( '1 ),
+    .Bypass     ( '0 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -511,9 +523,9 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .mst_resp_i ( data_fpu_out_resp_i   )
   );
 
-  // decouple inst AXI output port
+// decouple inst AXI output port
   axi_cut #(
-    .Bypass     ( '1 ),
+    .Bypass     ( '0 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
