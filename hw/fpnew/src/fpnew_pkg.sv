@@ -271,6 +271,16 @@ package fpnew_pkg;
 
 
   // FPU configuraion: implementation
+  localparam int unsigned LAT_COMP_FP32     = 'd2;
+  localparam int unsigned LAT_COMP_FP64     = 'd3;
+  localparam int unsigned LAT_COMP_FP16     = 'd1;
+  localparam int unsigned LAT_COMP_FP16ALT  = 'd1;
+  localparam int unsigned LAT_COMP_FP8      = 'd1;
+  localparam int unsigned LAT_COMP_FP8ALT   = 'd1;
+  localparam int unsigned LAT_DIVSQRT       = 'd2;
+  localparam int unsigned LAT_NONCOMP       = 'd1;
+  localparam int unsigned LAT_CONV          = 'd2;
+  localparam int unsigned LAT_DOTP          = 'd3;
   typedef struct packed {
     opgrp_fmt_unsigned_t   PipeRegs;
     opgrp_fmt_unit_types_t UnitTypes;
@@ -298,13 +308,26 @@ package fpnew_pkg;
   };
 
   localparam fpu_implementation_t CUSTOM_SNITCH = '{
-  PipeRegs:   '{default: 3},
+  PipeRegs:   '{
+                '{
+                unsigned'(LAT_COMP_FP32),
+                unsigned'(LAT_COMP_FP64),
+                unsigned'(LAT_COMP_FP16),
+                unsigned'(LAT_COMP_FP8),
+                unsigned'(LAT_COMP_FP16ALT),
+                unsigned'(LAT_COMP_FP8ALT)
+                },
+                '{default: unsigned'(LAT_DIVSQRT)}, // DIVSQRT
+                '{default: unsigned'(LAT_NONCOMP)}, // NONCOMP
+                '{default: unsigned'(LAT_CONV)},     // CONV
+                '{default: unsigned'(LAT_DOTP)}     // CONV
+              },  // ADDMUL,
   UnitTypes:  '{'{default: PARALLEL}, // ADDMUL
                 '{default: MERGED}, // DIVSQRT
                 '{default: PARALLEL}, // NONCOMP
                 '{default: MERGED},   // CONV
                 '{default: DISABLED}},  // DOTP
-  PipeConfig: INSIDE
+  PipeConfig: DISTRIBUTED
   };
 
   // Stochastic rounding only supported by DOTP operation group block

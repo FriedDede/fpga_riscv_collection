@@ -1,22 +1,27 @@
 CROSSCOMPILE ?= riscv64-unknown-elf-
-CC = ${CROSSCOMPILE}gcc
-PYTHON=python
+CC 			= ${CROSSCOMPILE}gcc
+PYTHON		=python
 
-CFLAGS = -Os -ggdb -march=rv32imf -mabi=ilp32 -Wall -mcmodel=medany -mexplicit-relocs
-CCASFLAGS = -mcmodel=medany -mexplicit-relocs
-LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles
+# snitch
+ CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32 -Wall
 
-INCLUDES = -I./ -I./src
+# ariane
+# CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64 -Wall
 
-SRCS_C = src/main.c src/uart.c # src/spi.c src/sd.c src/gpt.c
-SRCS_ASM = startup.S
-OBJS_C = $(SRCS_C:.c=.o)
-OBJS_S = $(SRCS_ASM:.S=.o)
+CCASFLAGS 	= -mcmodel=medlow -mexplicit-relocs
+LDFLAGS 	= -nostdlib -nostartfiles
 
-MAIN = bootrom.elf
-MAIN_BIN = $(MAIN:.elf=.bin)
-MAIN_IMG = $(MAIN:.elf=.img)
-MAIN_SV = $(MAIN:.elf=.sv)
+INCLUDES 	= -I./ -I./src
+
+SRCS_C 		= src/main.c src/uart.c # src/spi.c src/sd.c src/gpt.c
+SRCS_ASM 	= startup.S
+OBJS_C 		= $(SRCS_C:.c=.o)
+OBJS_S 		= $(SRCS_ASM:.S=.o)
+
+MAIN 		= bootrom.elf
+MAIN_BIN 	= $(MAIN:.elf=.bin)
+MAIN_IMG 	= $(MAIN:.elf=.img)
+MAIN_SV 	= $(MAIN:.elf=.sv)
 
 #.PHONY: clean
 

@@ -162,6 +162,7 @@ logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
 
 // clocking and reset declaration
 logic clk;
+logic rtc;
 
 logic master_areset;
 logic hbm_apb_areset_n;
@@ -315,7 +316,7 @@ assign uncore_areset_n = core_areset_n;
         // tie unused signal in bram channel to 0
         assign axi_dram[i].b_user = '0;
         assign axi_dram[i].r_user = '0;
-    end
+    end : cluster_gen
 
 // -----------------------
 // MEMORY SUBSYSTEM
@@ -473,7 +474,7 @@ assign uncore_areset_n = core_areset_n;
     xlnx_clk_gen_solo i_xlnx_clk_gen (
     .clk_out1 ( clk           ), // 50 MHz
     .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-    .clk_out3 (  ), // 250 Mhz pcie and hbm clk UNUSED
+    .clk_out3 ( rtc           ), // 10 Mhz rtc clk
     .reset    ( clock_reset     ),
     .locked   ( pll_locked    ),
     .clk_in1  ( REF_CLK ) // 100 Mhz ref clk

@@ -15,7 +15,7 @@
 // Description: CVA6 configuration package using the HPDcache as cache subsystem
 
 
-package cva6_config_pkg;
+package cva6_hp_config_pkg;
 
   localparam CVA6ConfigXlen = 64;
 

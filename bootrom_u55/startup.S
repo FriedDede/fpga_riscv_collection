@@ -8,12 +8,15 @@
   .option norvc
   .globl _prog_start
 _prog_start:
-  smp_pause(s1, s2)
+// initalize trap handler
   la      t0, handle_trap
   csrrw   zero, mtvec, t0
+// initialize fpu (Ariane only)
+  li t0, 1 << 13  
+  csrw mstatus, t0
+// initliaze stack pointer at dram end
   li sp, DRAM_BASE + DRAM_SIZE
   call main
-  smp_resume(s1, s2)
   csrr a0, mhartid
 //  la a1, _dtb
   li s1, DRAM_BASE

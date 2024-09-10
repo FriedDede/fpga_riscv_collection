@@ -155,6 +155,7 @@ AXI_BUS #(
 snitch_pkg::interrupts_t [CORE_NUMBER - 1 : 0] core_irq_i;
 
 logic clk;
+logic rtc;
 logic core_areset_n;
 logic uncore_areset_n;
 assign uncore_areset_n = core_areset_n;
@@ -247,15 +248,6 @@ assign uncore_areset_n = core_areset_n;
         `AXI_ASSIGN(axi_uncore2pxbar[i], axi_xbar2uncore[2])
         `AXI_ASSIGN(axi_clint, axi_xbar2uncore[3])
 
-        // clint logic
-        logic rtc;
-        always_ff @(posedge clk or negedge uncore_areset_n) begin
-            if (~uncore_areset_n) begin
-                rtc <= 0;
-            end else begin
-                rtc <= rtc ^ 1'b1;
-            end
-        end
         axi_clint #(
             .AddrWidth(AxiDataWidth),
             .DataWidth(AxiDataWidth),
@@ -459,7 +451,7 @@ end
     xlnx_clk_gen_solo i_xlnx_clk_gen (
         .clk_out1 ( clk           ), // 50 MHz
         .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-        .clk_out3 ( pcie_axi_clk  ), // 250 Mhz pcie and hbm clk
+        .clk_out3 ( rtc  ),          // 10 Mhz rtc clk
         .reset    ( clock_reset     ),
         .locked   ( pll_locked    ),
         .clk_in1  ( REF_CLK ) // 100 Mhz ref clk

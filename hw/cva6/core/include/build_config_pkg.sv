@@ -10,6 +10,7 @@ package build_config_pkg;
     CVA6Cfg.XF16 ? 16 :  // Xf16 ext.
     CVA6Cfg.XF16ALT ? 16 :  // Xf16alt ext.
     CVA6Cfg.XF8 ? 8 :  // Xf8 ext.
+    CVA6Cfg.XF8ALT ? 8 :
     1;  // Unused in case of no FP
 
     // Transprecision floating-point extensions configuration
@@ -17,6 +18,7 @@ package build_config_pkg;
     bit XF16Vec    = CVA6Cfg.XF16    & CVA6Cfg.XFVec & FLen>16; // FP16 vectors available if vectors and larger fmt enabled
     bit XF16ALTVec = CVA6Cfg.XF16ALT & CVA6Cfg.XFVec & FLen>16; // FP16ALT vectors available if vectors and larger fmt enabled
     bit XF8Vec     = CVA6Cfg.XF8     & CVA6Cfg.XFVec & FLen>8;  // FP8 vectors available if vectors and larger fmt enabled
+    bit XF8ALTVec  = CVA6Cfg.XF8ALT  & CVA6Cfg.XFVec & FLen>8;
 
     bit EnableAccelerator = CVA6Cfg.RVV;  // Currently only used by V extension (Ara)
     int unsigned NrWbPorts = (CVA6Cfg.CvxifEn || EnableAccelerator) ? 5 : 4;
@@ -62,6 +64,7 @@ package build_config_pkg;
     cfg.XF16 = CVA6Cfg.XF16;
     cfg.XF16ALT = CVA6Cfg.XF16ALT;
     cfg.XF8 = CVA6Cfg.XF8;
+    cfg.XF8ALT = CVA6Cfg.XF8ALT;
     cfg.RVA = CVA6Cfg.RVA;
     cfg.RVB = CVA6Cfg.RVB;
     cfg.RVV = CVA6Cfg.RVV;
@@ -84,6 +87,7 @@ package build_config_pkg;
     cfg.XF16Vec = bit'(XF16Vec);
     cfg.XF16ALTVec = bit'(XF16ALTVec);
     cfg.XF8Vec = bit'(XF8Vec);
+    cfg.XF8ALTVec = bit'(XF8ALTVec);
     // Can take 2 or 3 in single issue. 4 or 6 in dual issue.
     cfg.NrRgprPorts = unsigned'(CVA6Cfg.SuperscalarEn ? 4 : 2);
     // cfg.NrRgprPorts = unsigned'(CVA6Cfg.SuperscalarEn ? 6 : 3);

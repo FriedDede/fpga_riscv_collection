@@ -17,10 +17,11 @@
 #define ROM_BASE     0x00000000
 
 // clint
-#define CLINT_BASE   0x02000000
+#define CLINT_BASE          0x02000000
 #define CLINT_IPI_OFF		0
 #define CLINT_TIMER_CMP_OFF	0x4000
 #define CLINT_TIMER_VAL_OFF	0xbff8
+#define CLINT_TIMER_FREQ    50000000
 
 // Peripherals
 #define PLIC_BASE    0x10000000

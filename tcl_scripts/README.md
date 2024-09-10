@@ -1,0 +1,1 @@
+Those scripts must be executed from the vivado project root folder

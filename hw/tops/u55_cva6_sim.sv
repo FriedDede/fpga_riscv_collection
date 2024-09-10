@@ -153,10 +153,12 @@ AXI_BUS #(
 ) axi_peripherals[PERIF_NUMBER - 1:0]();
 
 // interrupt handling bus
-logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
+logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq;
 
 // clk and reset bus
 logic clk;
+logic rtc;
+
 logic core_areset_n;
 logic uncore_areset_n;
 assign uncore_areset_n = core_areset_n;
@@ -164,7 +166,7 @@ assign uncore_areset_n = core_areset_n;
 // Core
 // ---------------
     
-    for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin
+    for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin : cluster_gen
 
         logic [CORE_NUMBER -1 : 0]timer_irq;
         logic [CORE_NUMBER -1 : 0]ipi;
@@ -188,7 +190,7 @@ assign uncore_areset_n = core_areset_n;
                 .boot_addr_i(BOOT_ADDR),
                 .hart_id_i(i*j),
                 // meip
-                .irq_i(plic_irq_o[i*j]),
+                .irq_i(plic_irq[i*j]),
                 // msip
                 .ipi_i(ipi[j]),
                 // mtip
@@ -246,14 +248,6 @@ assign uncore_areset_n = core_areset_n;
         `AXI_ASSIGN(axi_clint, axi_xbar2uncore[3])
 
         // clint logic
-        logic rtc;
-        always_ff @(posedge clk or negedge uncore_areset_n) begin
-            if (~uncore_areset_n) begin
-                rtc <= 0;
-            end else begin
-                rtc <= rtc ^ 1'b1;
-            end
-        end
         axi_clint #(
             .AddrWidth(AxiDataWidth),
             .DataWidth(AxiDataWidth),
@@ -305,7 +299,7 @@ assign uncore_areset_n = core_areset_n;
             .rvalid_o   (rom_rvalid )
         );
 
-    end
+    end : cluster_gen
 // ----------------
 // MEMORY SUBSYSTEM
 // ----------------
@@ -371,12 +365,7 @@ end
     localparam int EXT_TIMERS = CLUSTER_NUMBER * 2; // 2 timers per core
     logic [(EXT_TIMERS *2) - 1 : 0] timer_irq;
     logic uart_irq;
-    logic [CORE_NUMBER - 1  : 0] plic_irq_o;
-
-    for (genvar i = 0; i < CORE_NUMBER; i++) begin : gen_irq
-        assign core_irq_i[i].meip = plic_irq_o[i*2];
-    end
-
+    
     axi_xbar_intf #(
         .AXI_USER_WIDTH(AxiUserWidth),
         .Cfg(perif_xbar_cfg),
@@ -416,7 +405,7 @@ end
         .rst_ni(uncore_areset_n),
         .plic(axi_peripherals[0]),
         .plic_irq_i({uart_irq,timer_irq}),
-        .plic_irq_o(plic_irq_o)
+        .plic_irq_o(plic_irq)
     );
     axi_timer #(
         .AxiAddrWidth(AxiAddrWidth),
@@ -456,7 +445,7 @@ end
     xlnx_clk_gen_solo i_xlnx_clk_gen (
         .clk_out1 ( clk           ), // 50 MHz
         .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-        .clk_out3 ( pcie_axi_clk  ), // 250 Mhz pcie and hbm clk
+        .clk_out3 ( rtc  ),          // 10 Mhz rtc clk
         .reset    ( clock_reset     ),
         .locked   ( pll_locked    ),
         .clk_in1  ( REF_CLK ) // 100 Mhz ref clk
