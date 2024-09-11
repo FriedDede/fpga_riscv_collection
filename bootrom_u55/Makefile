@@ -3,10 +3,10 @@ CC 			= ${CROSSCOMPILE}gcc
 PYTHON		=python
 
 # snitch
- CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32 -Wall
+# CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32 -Wall
 
 # ariane
-# CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64 -Wall
+CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
 
 CCASFLAGS 	= -mcmodel=medlow -mexplicit-relocs
 LDFLAGS 	= -nostdlib -nostartfiles

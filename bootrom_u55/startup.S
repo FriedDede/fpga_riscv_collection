@@ -11,7 +11,7 @@ _prog_start:
 // initalize trap handler
   la      t0, handle_trap
   csrrw   zero, mtvec, t0
-// initialize fpu (Ariane only)
+// initialize fpu
   li t0, 1 << 13  
   csrw mstatus, t0
 // initliaze stack pointer at dram end
