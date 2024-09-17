@@ -36,15 +36,15 @@ int main()
         j++;
     }
 
-    uint64_t time = *(uint64_t *)(CLINT_BASE + CLINT_TIMER_VAL_OFF);
+    uint32_t time = *(uint32_t *)(CLINT_BASE + CLINT_TIMER_VAL_OFF);
     // success
     //char time_string[16];
     //sprintf(time_string,"Boot at: %llu ",time);
     
-    *(uint64_t*) (dram_head + CLINT_TIMER_VAL_OFF) = time;
+    *(uint32_t*) (dram_head + CLINT_TIMER_VAL_OFF) = time;
  
     print_uart("Boot at: \n");
-    print_uart_int((uint32_t*)time);
+    print_uart_int(time);
 
     // jump to the start address of the payload 
     __asm__ volatile(

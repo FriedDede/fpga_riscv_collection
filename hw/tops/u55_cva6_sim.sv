@@ -28,15 +28,15 @@ module cva6_u55_sim (
 );
 
 localparam BOOT_ADDR        = 32'h0000_0000;
-localparam CORE_NUMBER      = 1;
+localparam CORE_NUMBER      = 8;
 localparam CLUSTER_NUMBER   = 1;
 localparam TOTAL_CORE_NUMBER = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER     = 3; // uart, timer, plic
 localparam DRAM_CH_NUMBER   = CORE_NUMBER; // snitch clusters
 localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 32
 localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
-localparam AxiIdWidthCore = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore = snitch_cluster_pkg::NarrowIdWidthIn + $clog2(CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
+localparam AxiIdWidthCore   = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
+localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
 localparam AxiIdWidthToPerifs = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
 localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
@@ -144,7 +144,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_uncore2pxbar[CORE_NUMBER-1:0]();
+) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -188,9 +188,9 @@ assign uncore_areset_n = core_areset_n;
                 .clk_i(clk),
                 .rst_ni(core_areset_n),
                 .boot_addr_i(BOOT_ADDR),
-                .hart_id_i(i*j),
+                .hart_id_i((i+1)*j),
                 // meip
-                .irq_i(plic_irq[i*j]),
+                .irq_i(plic_irq[(i+1)*j]),
                 // msip
                 .ipi_i(ipi[j]),
                 // mtip

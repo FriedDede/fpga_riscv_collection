@@ -18,11 +18,11 @@ module cva6_u55_xilinx_bd
     import snitch_cluster_pkg::*;
     import axi_pkg::*;
 (
-  input                 sys_clk_p       ,  // 100 MHz Clock for PCIe
-  input                 sys_clk_n       ,  // 100 MHz Clock for PCIE
-  input  logic          prst_n          , //reset
-  input                 HBM_ref_clk_p   ,
-  input                 HBM_ref_clk_n   ,
+  input                 sys_clk_p       ,   // 100 MHz Clock for PCIE
+  input                 sys_clk_n       ,   // 100 MHz Clock for PCIE
+  input  logic          prst_n          ,   //reset
+  input                 HBM_ref_clk_p   ,   // 100 MHz Clock for HBM
+  input                 HBM_ref_clk_n   ,   // 100 MHz Clock for HBM
   output wire [7:0]     pci_exp_txp     ,
   output wire [7:0]     pci_exp_txn     ,
   input  wire [7:0]     pci_exp_rxp     ,
@@ -40,7 +40,7 @@ localparam DRAM_CH_NUMBER   = CORE_NUMBER; // snitch clusters
 localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 32
 localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
 localparam AxiIdWidthCore = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore = snitch_cluster_pkg::NarrowIdWidthIn + $clog(CORE_NUMBER);  // 4
+localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(CORE_NUMBER);  // 4
 localparam AxiIdWidthToPerifs = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
 localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
@@ -148,7 +148,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_uncore2pxbar[CORE_NUMBER-1:0]();
+) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -162,10 +162,8 @@ logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
 
 // clocking and reset declaration
 logic clk;
-logic rtc;
 
 logic master_areset;
-logic hbm_apb_areset_n;
 logic core_areset_n;
 logic uncore_areset_n;
 assign uncore_areset_n = core_areset_n;
@@ -195,9 +193,9 @@ assign uncore_areset_n = core_areset_n;
                 .clk_i(clk),
                 .rst_ni(core_areset_n),
                 .boot_addr_i(BOOT_ADDR),
-                .hart_id_i(i*j),
+                .hart_id_i((i+1)*j),
                 // meip
-                .irq_i(plic_irq_o[i*j]),
+                .irq_i(plic_irq_o[(i+1)*j]),
                 // msip
                 .ipi_i(ipi[j]),
                 // mtip
@@ -325,10 +323,8 @@ assign uncore_areset_n = core_areset_n;
     // @ DRAM_BASE b1000_0000_0000_0000_0000_0000_0000_0000 [31:0]
     // HBM gets    b 000_0000_0000_0000_0000_0000_0000_0000 [30:0]
     // This allows us to have 31bit addressing (2GB)
-    logic HBM_REF_CLK, hbm_apb_clk, sys_clk, sys_clk_gt, sys_rst_n_c;
+    logic HBM_REF_CLK, sys_clk, sys_clk_gt, sys_rst_n_c;
     hbm_interface i_hbm_interface (
-        .APB_0_PCLK_0       (hbm_apb_clk),
-        .APB_0_PRESET_N_0   (hbm_apb_areset_n),
         .HBM_REF_CLK_0_0    (HBM_REF_CLK),
         .S00_AXI_0_araddr   (axi_dram[0].ar_addr[30:0]),
         .S00_AXI_0_arburst  (axi_dram[0].ar_burst),
@@ -454,30 +450,36 @@ assign uncore_areset_n = core_areset_n;
 // -------------------------
 // Clocking system and RESET
 // -------------------------
-    logic REF_CLK, pll_locked;
-    IBUF sys_reset_n_ibuf (.O(sys_rst_n_c), .I(prst_n));
-
-    IBUFDS hbm_ref_clk (
+    logic REF_CLK, SOC_REF_CLK, pll_locked;
+    IBUF    sys_reset_n_ibuf (
+        .O(sys_rst_n_c), 
+        .I(prst_n)
+    );
+    IBUFDS  hbm_ref_clk_ibuf (
         .I(HBM_ref_clk_p), 
         .IB(HBM_ref_clk_n),
         .O(REF_CLK)
-        );
-    BUFG hbm_ref_clk_bufg (
+    );
+    BUFG    hbm_ref_clk_bufg (
         .I(REF_CLK), 
         .O(HBM_REF_CLK)
-        );
+    );
+    BUFG    soc_ref_clk_bufg (
+        .I(REF_CLK), 
+        .O(SOC_REF_CLK)
+    );
 
     // we need to switch reset polarity for core reset
     logic clock_reset;
     assign clock_reset = ~sys_rst_n_c;
 
     xlnx_clk_gen_solo i_xlnx_clk_gen (
-    .clk_out1 ( clk           ), // 50 MHz
-    .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-    .clk_out3 ( rtc           ), // 10 Mhz rtc clk
+    .clk_out1 ( clk             ), // 100 MHz
+    .clk_out2 (                 ), // 100 MHz clock
+    .clk_out3 (                 ), // 10 Mhz rtc clk
     .reset    ( clock_reset     ),
-    .locked   ( pll_locked    ),
-    .clk_in1  ( REF_CLK ) // 100 Mhz ref clk
+    .locked   ( pll_locked      ),
+    .clk_in1  ( SOC_REF_CLK      ) // 100 Mhz ref clk
     );
 
     IBUFDS_GTE4 #(
@@ -492,21 +494,17 @@ assign uncore_areset_n = core_areset_n;
 
     // core_areset_n is driven high when pll locks and the board releases his external reset
     // then the logic can be resetted from the hbm_xdma_interface
+    // register the reset as a cdc mitigation
+    logic master_areset_reg;
+    always @(posedge clk) begin 
+        master_areset_reg <= master_areset;
+    end
     rstgen i_rstgen_main (
         .clk_i        ( clk                      ),
-        .rst_ni       ( pll_locked & (!master_areset) & sys_rst_n_c),
+        .rst_ni       ( pll_locked & (!master_areset_reg) & sys_rst_n_c),
         .test_mode_i  ( '0                       ),
         .rst_no       ( core_areset_n            ),
         .init_no      (                          ) // keep open
-    );
-
-    proc_sys_reset_0 i_proc_sys_reset(
-        .aux_reset_in(1'b1),
-        .dcm_locked(1'b1),
-        .mb_debug_sys_rst(1'b0),
-        .slowest_sync_clk(hbm_apb_clk),
-        .ext_reset_in(sys_rst_n_c),
-        .peripheral_aresetn(hbm_apb_areset_n)
     );
 
 // -----------------

@@ -1,14 +1,14 @@
 CROSSCOMPILE ?= riscv64-unknown-elf-
 CC 			= ${CROSSCOMPILE}gcc
-PYTHON		=python
+PYTHON		=python3
 
 # snitch
-# CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32 -Wall
+ CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32d -Wall
 
 # ariane
-CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
+#CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
 
-CCASFLAGS 	= -mcmodel=medlow -mexplicit-relocs
+CCASFLAGS 	= -mcmodel=medany -mexplicit-relocs
 LDFLAGS 	= -nostdlib -nostartfiles
 
 INCLUDES 	= -I./ -I./src

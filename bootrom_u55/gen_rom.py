@@ -88,14 +88,15 @@ def read_bin():
 
     with open(filename + ".img", 'rb') as f:
         rom = bytearray(reversed(f.read()))
-        rom = (binascii.hexlify(rom))
-        print(rom)
+        st_rom = (binascii.hexlify(rom))
+        print(st_rom)
     # align to 64 bit
     align = (int((len((rom)) + 7) / 8 )) * 8
 
     for i in range(len(rom), align):
-        rom.append("00")
+        rom.insert(0,0)
     
+    rom =  (binascii.hexlify(rom))
     return rom
 
 rom = read_bin()

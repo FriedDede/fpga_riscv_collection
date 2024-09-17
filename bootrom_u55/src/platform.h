@@ -2,7 +2,7 @@
 
 
 // core clock in mhz
-#define CORE_CLK    50000000
+#define CORE_CLK    100000000
 #define UART_BAUD   115200
 // dram address space
 #define DRAM_BASE   0x80000000

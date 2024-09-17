@@ -60,7 +60,6 @@ set_property PACKAGE_PIN AU11 [get_ports {pci_exp_txp[7]}]
 set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AlternateCLBRouting [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AlternateReplication [get_runs impl_1]
 
-CONFIG_VOLTAGE
 BITSTREAM.CONFIG.CONFIGFALLBACK
 BITSTREAM.GENERAL.COMPRESS
 CONFIG_MODE

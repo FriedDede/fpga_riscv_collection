@@ -34,18 +34,19 @@ module snitch_u55_xilinx_bd
 localparam BOOT_ADDR        = 32'h0000_0000;
 localparam CORE_NUMBER      = 1;
 localparam CLUSTER_NUMBER   = 1;
+localparam TOTAL_CORE_NUMBER = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER     = 3; // uart, timer, plic
 localparam DRAM_CH_NUMBER   = CORE_NUMBER; // snitch clusters
 localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 32
 localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
 localparam AxiIdWidthCore = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore = snitch_cluster_pkg::NarrowIdWidthIn + $clog2(3);  // 4 + 2 (each core exposes 3 channels)
+localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(3 * CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
 localparam AxiIdWidthToPerifs = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
 localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 
 // xbar config
 localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
-    NoSlvPorts:         3,
+    NoSlvPorts:         3*CORE_NUMBER,
     NoMstPorts:         4,
     MaxMstTrans:        16,
     MaxSlvTrans:        16,
@@ -147,7 +148,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_uncore2pxbar[CORE_NUMBER-1:0]();
+) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -156,14 +157,12 @@ AXI_BUS #(
 ) axi_peripherals[PERIF_NUMBER - 1:0]();
 
 // interrupt handling bus
-snitch_pkg::interrupts_t [CORE_NUMBER - 1 : 0] core_irq_i;
+snitch_pkg::interrupts_t [TOTAL_CORE_NUMBER - 1 : 0] core_irq_i;
 
 // clocking and reset declaration
 logic clk;
-logic rtc;
 
 logic master_areset;
-logic hbm_apb_areset_n;
 logic core_areset_n;
 logic uncore_areset_n;
 assign uncore_areset_n = core_areset_n;
@@ -171,13 +170,20 @@ assign uncore_areset_n = core_areset_n;
 // Core
 // ---------------
     
-    for ( genvar i=0; i<CORE_NUMBER; ++i) begin  : snitch_core_gen
+    for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin  : snitch_cluster_gen
 
-        snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
-        snitch_cluster_pkg::narrow_out_resp_t   axi_icache_snitch_resp;
-        snitch_cluster_pkg::narrow_out_req_t    [1:0]axi_data_snitch_req;
-        snitch_cluster_pkg::narrow_out_resp_t   [1:0]axi_data_snitch_resp;
-        snitch_core_axi #(
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthCore ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_snitch2mux[(3*CORE_NUMBER) - 1 : 0]();
+            for ( genvar j=0; j<CORE_NUMBER; ++j) begin  : core_gen
+            snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
+            snitch_cluster_pkg::narrow_out_resp_t   axi_icache_snitch_resp;
+            snitch_cluster_pkg::narrow_out_req_t    [1:0]axi_data_snitch_req;
+            snitch_cluster_pkg::narrow_out_resp_t   [1:0]axi_data_snitch_resp;
+            snitch_core_axi #(
             .AddrWidth          (AxiAddrWidth),
             .DataWidth          (AxiDataWidth),
             .IdWidthIn          (AxiIdWidthCore),
@@ -186,8 +192,8 @@ assign uncore_areset_n = core_areset_n;
         ) i_snitch(
             .clk_i                  (clk),
             .rst_ni                 (core_areset_n),
-            .hart_id_i              (i),
-            .irq_i                  (core_irq_i[i]),
+            .hart_id_i              ((i+1)*j),
+            .irq_i                  (core_irq_i[(i+1)*j]),
             // icache
             .inst_out_req_o         (axi_icache_snitch_req     ),
             .inst_out_resp_i        (axi_icache_snitch_resp    ),
@@ -198,18 +204,22 @@ assign uncore_areset_n = core_areset_n;
             .data_fpu_out_req_o     (axi_data_snitch_req    [1]),
             .data_fpu_out_resp_i    (axi_data_snitch_resp   [1])
         );
+            // integer core lsu
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0 + (3*j)], axi_data_snitch_req[0])
+            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0 + (3*j)])
+            // fpu lsu
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[1 + (3*j)], axi_data_snitch_req[1])
+            `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], axi_snitch2mux[1 + (3*j)])
+            // icache 
+            `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2 + (3*j)], axi_icache_snitch_req)
+            `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2 + (3*j)])
+        end
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
             .AXI_DATA_WIDTH ( AxiDataWidth     ),
-            .AXI_ID_WIDTH   ( AxiIdWidthCore ),
+            .AXI_ID_WIDTH   ( AxiIdWidthToUncore),
             .AXI_USER_WIDTH ( AxiUserWidth     )
-        ) axi_snitch2mux[2:0]();
-        AXI_BUS #(
-           .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-           .AXI_DATA_WIDTH ( AxiDataWidth     ),
-           .AXI_ID_WIDTH   ( AxiIdWidthToUncore),
-           .AXI_USER_WIDTH ( AxiUserWidth     )
-         ) axi_xbar2uncore[3:0]();
+        ) axi_xbar2uncore[3:0]();
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
             .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -222,16 +232,6 @@ assign uncore_areset_n = core_areset_n;
             .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_clint();
-        
-        // integer core lsu
-        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0], axi_data_snitch_req[0])
-        `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0])
-        // fpu lsu
-        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[1], axi_data_snitch_req[1])
-        `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[1], axi_snitch2mux[1])
-        // icache 
-        `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[2], axi_icache_snitch_req)
-        `AXI_ASSIGN_TO_RESP  (axi_icache_snitch_resp, axi_snitch2mux[2])
         axi_xbar_intf #(
             .AXI_USER_WIDTH(AxiUserWidth),
             .Cfg(xbar_cfg),
@@ -253,6 +253,14 @@ assign uncore_areset_n = core_areset_n;
         
         `AXI_ASSIGN(axi_clint, axi_xbar2uncore[3])
         // clint logic
+        logic rtc;
+        always_ff @(posedge clk or negedge uncore_areset_n) begin
+            if (~uncore_areset_n) begin
+                rtc <= 0;
+            end else begin
+                rtc <= rtc ^ 1'b1;
+            end
+        end
         axi_clint #(
             .AddrWidth(AxiAddrWidth),
             .DataWidth(AxiDataWidth),
@@ -315,10 +323,8 @@ assign uncore_areset_n = core_areset_n;
     // @ DRAM_BASE b1000_0000_0000_0000_0000_0000_0000_0000 [31:0]
     // HBM gets    b 000_0000_0000_0000_0000_0000_0000_0000 [30:0]
     // This allows us to have 31bit addressing (2GB)
-    logic HBM_REF_CLK, hbm_apb_clk, sys_clk, sys_clk_gt, sys_rst_n_c;
+    logic HBM_REF_CLK, sys_clk, sys_clk_gt, sys_rst_n_c;
     hbm_interface i_hbm_interface (
-        .APB_0_PCLK_0       (hbm_apb_clk),
-        .APB_0_PRESET_N_0   (hbm_apb_areset_n),
         .HBM_REF_CLK_0_0    (HBM_REF_CLK),
         .S00_AXI_0_araddr   (axi_dram[0].ar_addr[30:0]),
         .S00_AXI_0_arburst  (axi_dram[0].ar_burst),
@@ -383,12 +389,12 @@ assign uncore_areset_n = core_areset_n;
 // -----------------------
 // PERYPHERALS SUBSYSTEM 
 // -----------------------
-    localparam int EXT_TIMERS = CLUSTER_NUMBER * 2; // 2 timers per core
+    localparam int EXT_TIMERS = TOTAL_CORE_NUMBER * 2; // 2 timers per core
     logic [(EXT_TIMERS *2) - 1 : 0] timer_irq;
     logic uart_irq;
-    logic [CORE_NUMBER - 1  : 0] plic_irq_o;
+    logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
 
-    for (genvar i = 0; i < CORE_NUMBER; i++) begin : gen_irq
+    for (genvar i = 0; i < TOTAL_CORE_NUMBER; i++) begin : gen_irq
         assign core_irq_i[i].meip = plic_irq_o[i*2];
     end
 
@@ -425,7 +431,7 @@ assign uncore_areset_n = core_areset_n;
         .AxiIdWidth(AxiIdWidthToPerifs),
         .AxiUserWidth(AxiUserWidth),
         .NIrqSrcs((EXT_TIMERS *2) + 1), // 2 src per timer per core + uart
-        .NHARTS(CLUSTER_NUMBER)
+        .NHARTS(TOTAL_CORE_NUMBER)
     ) axi_plic_instance(
         .clk_i(clk),
         .rst_ni(uncore_areset_n),
@@ -449,8 +455,11 @@ assign uncore_areset_n = core_areset_n;
 // -------------------------
 // Clocking system and RESET
 // -------------------------
-    logic REF_CLK, pll_locked;
-    IBUF sys_reset_n_ibuf (.O(sys_rst_n_c), .I(prst_n));
+    logic REF_CLK, SOC_REF_CLK, pll_locked;
+    IBUF sys_reset_n_ibuf (
+        .O(sys_rst_n_c), 
+        .I(prst_n)
+    );
 
     IBUFDS hbm_ref_clk (
         .I(HBM_ref_clk_p), 
@@ -461,6 +470,10 @@ assign uncore_areset_n = core_areset_n;
         .I(REF_CLK), 
         .O(HBM_REF_CLK)
         );
+    BUFG    soc_ref_clk_bufg (
+        .I(REF_CLK), 
+        .O(SOC_REF_CLK)
+    );
 
     // we need to switch reset polarity for core reset
     logic clock_reset;
@@ -468,11 +481,11 @@ assign uncore_areset_n = core_areset_n;
 
     xlnx_clk_gen_solo i_xlnx_clk_gen (
     .clk_out1 ( clk           ), // Core 100 MHz
-    .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
-    .clk_out3 ( rtc           ), // rtc 10 Mhz
+    .clk_out2 (               ), // 100 MHz clock
+    .clk_out3 (            ), // rtc 10 Mhz
     .reset    ( clock_reset   ),
     .locked   ( pll_locked    ),
-    .clk_in1  ( REF_CLK ) // 100 Mhz ref clk
+    .clk_in1  ( SOC_REF_CLK ) // 100 Mhz ref clk
     );
 
     IBUFDS_GTE4 #(
@@ -487,21 +500,16 @@ assign uncore_areset_n = core_areset_n;
 
     // core_areset_n is driven high when pll locks and the board releases his external reset
     // then the logic can be resetted from the hbm_xdma_interface
+    logic master_areset_reg;
+    always @(posedge clk) begin 
+        master_areset_reg <= master_areset;
+    end
     rstgen i_rstgen_main (
         .clk_i        ( clk                      ),
-        .rst_ni       ( pll_locked & (!master_areset) & sys_rst_n_c),
+        .rst_ni       ( pll_locked & (!master_areset_reg) & sys_rst_n_c),
         .test_mode_i  ( '0                       ),
         .rst_no       ( core_areset_n            ),
         .init_no      (                          ) // keep open
-    );
-
-    proc_sys_reset_0 i_proc_sys_reset(
-        .aux_reset_in(1'b1),
-        .dcm_locked(1'b1),
-        .mb_debug_sys_rst(1'b0),
-        .slowest_sync_clk(hbm_apb_clk),
-        .ext_reset_in(sys_rst_n_c),
-        .peripheral_aresetn(hbm_apb_areset_n)
     );
 
 // -----------------

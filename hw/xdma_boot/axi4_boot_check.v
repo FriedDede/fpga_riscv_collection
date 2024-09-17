@@ -18,6 +18,10 @@ module axi4_boot_check #(
     reg start;
     integer counter;
     assign start_o = start;
+
+    reg [63:0]    wdata_q;
+    reg [63:0]    awaddr_q;
+    reg           wvalid_q;
     
     always @(posedge aclk, negedge aresetn) begin
         if (!aresetn) begin
@@ -30,11 +34,24 @@ module axi4_boot_check #(
             if (counter == 100 && start) begin
                 start <= 0;
                 counter <= 0;
-            end else if (s_axi_wdata[63 : 0] == 64'hffffffff_ffffffff & s_axi_awaddr == 64'h0 & s_axi_wvalid & start == 0) begin
+            end else if (wdata_q[63 : 0] == 64'hffffffff_ffffffff & awaddr_q == 64'h0 & wvalid_q & start == 0) begin
                 start <= 1'b1;
                 counter <= 0;
             end
         end
     end
+
+    always @(posedge aclk, negedge aresetn) begin
+        if (!aresetn) begin
+            wdata_q     <= 'b0; 
+            awaddr_q    <= 'b0;
+            wvalid_q    <= 'b0;
+        end else if (aclk) begin
+            wdata_q     <= s_axi_wdata[63:0]; 
+            awaddr_q    <= s_axi_awaddr;
+            wvalid_q    <= s_axi_wvalid;
+        end
+    end
+    
 
 endmodule
