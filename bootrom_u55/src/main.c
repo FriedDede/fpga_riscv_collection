@@ -11,16 +11,61 @@ int main()
     {
         init_uart(CORE_CLK,UART_BAUD);
     }
-    else
-    {
-        while (1) {};
-    }
-    
+
     // jump to the start address of the payload 
-    __asm__ volatile(
-        "li s0, 0x80010000 ;"
-        "jalr s0"
-    );
+    switch (hartid)
+    {
+    case 0:  
+        __asm__ volatile(
+            "li s0, 0x80010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 1:
+        __asm__ volatile(
+            "li s0, 0x82010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 2:
+        __asm__ volatile(
+            "li s0, 0x84010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 3:
+        __asm__ volatile(
+            "li s0, 0x86010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 4:  
+        __asm__ volatile(
+            "li s0, 0x88010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 5:
+        __asm__ volatile(
+            "li s0, 0x8A010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 6:
+        __asm__ volatile(
+            "li s0, 0x8C010000 ;"
+            "jalr s0"
+        );
+        break;
+    case 7:
+        __asm__ volatile(
+            "li s0, 0x8E010000 ;"
+            "jalr s0"
+        );
+        break;
+    default:
+        break;
+    }
 
     if (hartid == 0)
     {

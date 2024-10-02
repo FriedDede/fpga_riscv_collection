@@ -32,7 +32,7 @@ module snitch_u55_xilinx_bd
 );
 
 localparam BOOT_ADDR        = 32'h0000_0000;
-localparam CORE_NUMBER      = 1;
+localparam CORE_NUMBER      = 4;
 localparam CLUSTER_NUMBER   = 1;
 localparam TOTAL_CORE_NUMBER = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER     = 3; // uart, timer, plic
@@ -91,7 +91,7 @@ function rule_t [3:0] addr_map_gen ();
     addr_map_gen[1] = rule_t'{
         idx:        unsigned'(1),
         start_addr: 32'h8000_0000,
-        end_addr:   32'h8000_0000 + 32'h2000_0000, // 512MB per core here
+        end_addr:   32'h8000_0000 + 32'h2000_0000, // 512MB per cluster here
         default:    '0
     };
     // Perif (PLIC UART TIMER ... )
