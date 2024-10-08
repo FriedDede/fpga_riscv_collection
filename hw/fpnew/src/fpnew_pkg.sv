@@ -271,16 +271,17 @@ package fpnew_pkg;
 
 
   // FPU configuraion: implementation
-  localparam int unsigned LAT_COMP_FP32     = 'd2;
-  localparam int unsigned LAT_COMP_FP64     = 'd3;
-  localparam int unsigned LAT_COMP_FP16     = 'd1;
-  localparam int unsigned LAT_COMP_FP16ALT  = 'd1;
-  localparam int unsigned LAT_COMP_FP8      = 'd1;
-  localparam int unsigned LAT_COMP_FP8ALT   = 'd1;
-  localparam int unsigned LAT_DIVSQRT       = 'd2;
-  localparam int unsigned LAT_NONCOMP       = 'd1;
-  localparam int unsigned LAT_CONV          = 'd2;
-  localparam int unsigned LAT_DOTP          = 'd3;
+  localparam int unsigned PIPELINING_STAGES = 'd1;
+  localparam int unsigned LAT_COMP_FP32     = 'd2 + PIPELINING_STAGES;
+  localparam int unsigned LAT_COMP_FP64     = 'd3 + PIPELINING_STAGES;
+  localparam int unsigned LAT_COMP_FP16     = 'd1 + PIPELINING_STAGES;
+  localparam int unsigned LAT_COMP_FP16ALT  = 'd1 + PIPELINING_STAGES;
+  localparam int unsigned LAT_COMP_FP8      = 'd1 + PIPELINING_STAGES;
+  localparam int unsigned LAT_COMP_FP8ALT   = 'd1 + PIPELINING_STAGES;
+  localparam int unsigned LAT_DIVSQRT       = 'd2 + PIPELINING_STAGES;
+  localparam int unsigned LAT_NONCOMP       = 'd1 + PIPELINING_STAGES;
+  localparam int unsigned LAT_CONV          = 'd2 + PIPELINING_STAGES;
+  localparam int unsigned LAT_DOTP          = 'd3 + PIPELINING_STAGES;
   typedef struct packed {
     opgrp_fmt_unsigned_t   PipeRegs;
     opgrp_fmt_unit_types_t UnitTypes;
