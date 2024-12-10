@@ -47,10 +47,10 @@ module cva6_u55_xilinx_bd
 // design parameter
 localparam BOOT_ADDR            = 32'h0000_0000;
 localparam CORE_NUMBER          = 4;
-localparam CLUSTER_NUMBER       = 1;
+localparam CLUSTER_NUMBER       = 4;
 localparam TOTAL_CORE_NUMBER     = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER         = 3;            // uart, timer, plic
-localparam DRAM_CH_NUMBER       = CORE_NUMBER;  // snitch clusters
+localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER;  // snitch clusters
 
 // axi paramenter
 localparam AxiAddrWidth         = 32;           // 32
@@ -66,6 +66,8 @@ typedef logic [AxiAddrWidth-1:0]        addr_t;
 typedef logic [AxiDataWidth-1:0]        data_t;
 typedef logic [AxiDataWidth/8-1:0]      strb_t;
 typedef logic [AxiUserWidth-1:0]        user_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_in_id_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_out_id_t;
 `AXI_TYPEDEF_ALL(cva6_in, addr_t, narrow_in_id_t, data_t, strb_t, user_t)
 `AXI_TYPEDEF_ALL(cva6_out, addr_t, narrow_out_id_t, data_t, strb_t, user_t)
 
@@ -76,7 +78,7 @@ localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
     MaxMstTrans:        16,
     MaxSlvTrans:        16,
     FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_AX,
+    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
     PipelineStages:     1,
     AxiIdWidthSlvPorts: AxiIdWidthCore,
     AxiIdUsedSlvPorts:  2,
@@ -92,7 +94,7 @@ localparam axi_pkg::xbar_cfg_t perif_xbar_cfg = '{
     MaxMstTrans:        16,
     MaxSlvTrans:        16,
     FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_AX,
+    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
     PipelineStages:     1,
     AxiIdWidthSlvPorts: AxiIdWidthToUncore,
     AxiIdUsedSlvPorts:  AxiIdWidthToUncore,
@@ -167,7 +169,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_dram[DRAM_CH_NUMBER-1:0]();
+) axi_dram[16-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
     .AXI_DATA_WIDTH ( AxiPerifDataWidth  ),
@@ -186,10 +188,8 @@ logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
 
 // clocking and reset declaration
 logic clk;
-logic clk_axi_hbm;
 logic master_areset;
 logic core_areset_n;
-//logic core_areset_axi_n;
 logic uncore_areset_n;
 assign uncore_areset_n = core_areset_n;
 // ---------------
@@ -331,7 +331,19 @@ assign uncore_areset_n = core_areset_n;
             assign axi_clint.r_user = '0;
 
         // ROM
-            `AXI_ASSIGN(axi_rom, axi_xbar2uncore[0])
+            axi_dw_converter_intf #(
+                .AXI_ID_WIDTH            (AxiIdWidthToUncore),
+                .AXI_ADDR_WIDTH          (AxiAddrWidth),
+                .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
+                .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
+                .AXI_USER_WIDTH          (AxiUserWidth),
+                .AXI_MAX_READS           (8)
+            ) i_dw_conv_rom (
+                .clk_i  (clk),
+                .rst_ni (uncore_areset_n),
+                .slv    (axi_xbar2uncore[0]),
+                .mst    (axi_rom)
+            );
 
             logic                    rom_req;
             logic [AxiAddrWidth-1:0] rom_addr;
@@ -366,22 +378,8 @@ assign uncore_areset_n = core_areset_n;
                 .rvalid_o   ( rom_rvalid)
             );
         
-        // DRAM cdc
-            axi_cdc_intf #(
-                .AXI_ID_WIDTH(AxiIdWidthToUncore),
-                .AXI_ADDR_WIDTH(AxiAddrWidth),
-                .AXI_DATA_WIDTH(AxiDataWidth),
-                .AXI_USER_WIDTH(AxiUserWidth),
-                .LOG_DEPTH(4 * $clog2(CORE_NUMBER)), //4 FIFO entry per core (4Kb mini near dram cache)
-                .SYNC_STAGES(2)
-            ) i_cdc_hbm (
-                .src_clk_i(clk),
-                .src_rst_ni(core_areset_n),
-                .src(axi_xbar2uncore[1]),
-                .dst_clk_i(clk_axi_hbm),
-                .dst_rst_ni(core_areset_n),
-                .dst(axi_dram[i])
-            );
+        // DRAM
+        `AXI_ASSIGN(axi_dram[i],axi_xbar2uncore[1])
         // tie unused signal in bram channel to 0
         assign axi_dram[i].b_user = '0;
         assign axi_dram[i].r_user = '0;
@@ -398,7 +396,7 @@ assign uncore_areset_n = core_areset_n;
     hbm_interface i_hbm_interface (
         .HBM_REF_CLK_0_0    (HBM_REF_CLK),
         // cluster 0
-        .S00_AXI_0_araddr   (axi_dram[0].ar_addr[30:0]),
+        .S00_AXI_0_araddr   ({4'b00000, axi_dram[0].ar_addr[29:0]}),
         .S00_AXI_0_arburst  (axi_dram[0].ar_burst),
         .S00_AXI_0_arcache  (axi_dram[0].ar_cache),
         .S00_AXI_0_arid     (axi_dram[0].ar_id),
@@ -409,7 +407,7 @@ assign uncore_areset_n = core_areset_n;
         .S00_AXI_0_arready  (axi_dram[0].ar_ready),
         .S00_AXI_0_arsize   (axi_dram[0].ar_size),
         .S00_AXI_0_arvalid  (axi_dram[0].ar_valid),
-        .S00_AXI_0_awaddr   (axi_dram[0].aw_addr[30:0]),
+        .S00_AXI_0_awaddr   ({4'b00000, axi_dram[0].aw_addr[29:0]}),
         .S00_AXI_0_awburst  (axi_dram[0].aw_burst),
         .S00_AXI_0_awcache  (axi_dram[0].aw_cache),
         .S00_AXI_0_awid     (axi_dram[0].aw_id),
@@ -436,7 +434,7 @@ assign uncore_areset_n = core_areset_n;
         .S00_AXI_0_wstrb    (axi_dram[0].w_strb),
         .S00_AXI_0_wvalid   (axi_dram[0].w_valid),    
         // cluster 1
-        .S01_AXI_0_araddr   (axi_dram[1].ar_addr[30:0]),
+        .S01_AXI_0_araddr   ({4'b00001, axi_dram[1].ar_addr[29:0]}),
         .S01_AXI_0_arburst  (axi_dram[1].ar_burst),
         .S01_AXI_0_arcache  (axi_dram[1].ar_cache),
         .S01_AXI_0_arid     (axi_dram[1].ar_id),
@@ -447,7 +445,7 @@ assign uncore_areset_n = core_areset_n;
         .S01_AXI_0_arready  (axi_dram[1].ar_ready),
         .S01_AXI_0_arsize   (axi_dram[1].ar_size),
         .S01_AXI_0_arvalid  (axi_dram[1].ar_valid),
-        .S01_AXI_0_awaddr   (axi_dram[1].aw_addr[30:0]),
+        .S01_AXI_0_awaddr   ({4'b00001, axi_dram[1].aw_addr[29:0]}),
         .S01_AXI_0_awburst  (axi_dram[1].aw_burst),
         .S01_AXI_0_awcache  (axi_dram[1].aw_cache),
         .S01_AXI_0_awid     (axi_dram[1].aw_id),
@@ -474,7 +472,7 @@ assign uncore_areset_n = core_areset_n;
         .S01_AXI_0_wstrb    (axi_dram[1].w_strb),
         .S01_AXI_0_wvalid   (axi_dram[1].w_valid),    
         // cluster 2
-        .S02_AXI_0_araddr   (axi_dram[2].ar_addr[30:0]),
+        .S02_AXI_0_araddr   ({4'b00010, axi_dram[2].ar_addr[29:0]}),
         .S02_AXI_0_arburst  (axi_dram[2].ar_burst),
         .S02_AXI_0_arcache  (axi_dram[2].ar_cache),
         .S02_AXI_0_arid     (axi_dram[2].ar_id),
@@ -485,7 +483,7 @@ assign uncore_areset_n = core_areset_n;
         .S02_AXI_0_arready  (axi_dram[2].ar_ready),
         .S02_AXI_0_arsize   (axi_dram[2].ar_size),
         .S02_AXI_0_arvalid  (axi_dram[2].ar_valid),
-        .S02_AXI_0_awaddr   (axi_dram[2].aw_addr[30:0]),
+        .S02_AXI_0_awaddr   ({4'b00010, axi_dram[2].aw_addr[29:0]}),
         .S02_AXI_0_awburst  (axi_dram[2].aw_burst),
         .S02_AXI_0_awcache  (axi_dram[2].aw_cache),
         .S02_AXI_0_awid     (axi_dram[2].aw_id),
@@ -512,7 +510,7 @@ assign uncore_areset_n = core_areset_n;
         .S02_AXI_0_wstrb    (axi_dram[2].w_strb),
         .S02_AXI_0_wvalid   (axi_dram[2].w_valid),    
         // cluster 3
-        .S03_AXI_0_araddr   (axi_dram[3].ar_addr[30:0]),
+        .S03_AXI_0_araddr   ({4'b00011, axi_dram[3].ar_addr[29:0]}),
         .S03_AXI_0_arburst  (axi_dram[3].ar_burst),
         .S03_AXI_0_arcache  (axi_dram[3].ar_cache),
         .S03_AXI_0_arid     (axi_dram[3].ar_id),
@@ -523,7 +521,7 @@ assign uncore_areset_n = core_areset_n;
         .S03_AXI_0_arready  (axi_dram[3].ar_ready),
         .S03_AXI_0_arsize   (axi_dram[3].ar_size),
         .S03_AXI_0_arvalid  (axi_dram[3].ar_valid),
-        .S03_AXI_0_awaddr   (axi_dram[3].aw_addr[30:0]),
+        .S03_AXI_0_awaddr   ({4'b00011, axi_dram[3].aw_addr[29:0]}),
         .S03_AXI_0_awburst  (axi_dram[3].aw_burst),
         .S03_AXI_0_awcache  (axi_dram[3].aw_cache),
         .S03_AXI_0_awid     (axi_dram[3].aw_id),
@@ -548,8 +546,8 @@ assign uncore_areset_n = core_areset_n;
         .S03_AXI_0_wlast    (axi_dram[3].w_last),
         .S03_AXI_0_wready   (axi_dram[3].w_ready),
         .S03_AXI_0_wstrb    (axi_dram[3].w_strb),
-        .S03_AXI_0_wvalid   (axi_dram[3].w_valid),     
-        .axi_clk_uncore_0   (clk_axi_hbm),
+        .S03_AXI_0_wvalid   (axi_dram[3].w_valid),   
+        .axi_clk_uncore_0   (clk),
         .pcie_mgt_0_rxn     (pci_exp_rxn),
         .pcie_mgt_0_rxp     (pci_exp_rxp),
         .pcie_mgt_0_txn     (pci_exp_txn),
@@ -665,11 +663,6 @@ assign uncore_areset_n = core_areset_n;
     .clk_in1  ( SOC_REF_CLK      ) // 100 Mhz ref clk
     );
 
-    clk_gen_uncore i_clk_gen_hbm_axi (
-        .clk_out1 (clk_axi_hbm),
-        .clk_in1  (clk)
-    );
-
     IBUFDS_GTE4 #(
     .REFCLK_HROW_CK_SEL ( 2'b00 )
     ) IBUFDS_GTE4_inst (
@@ -694,13 +687,6 @@ assign uncore_areset_n = core_areset_n;
         .rst_no       ( core_areset_n            ),
         .init_no      (                          ) // keep open
     );
-    //rstgen i_rstgen_axi_hbm (
-    //    .clk_i        ( clk_axi_hbm              ),
-    //    .rst_ni       ( core_areset_n            ),
-    //    .test_mode_i  ( '0                       ),
-    //    .rst_no       ( core_areset_axi_n        ),
-    //    .init_no      (                          ) // keep open
-    //);
 
 // -----------------
 // END
