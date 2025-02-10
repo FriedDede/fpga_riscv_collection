@@ -879,8 +879,8 @@ proc create_root_design { parentCell } {
     CONFIG.PCIE_BOARD_INTERFACE {pci_express_x16} \
     CONFIG.dma_intf_sel_qdma {AXI_MM} \
     CONFIG.pf0_bar2_enabled_qdma {false} \
-    CONFIG.pl_link_cap_max_link_speed {16.0_GT/s} \
-    CONFIG.pl_link_cap_max_link_width {X8} \
+    CONFIG.pl_link_cap_max_link_speed {8.0_GT/s} \
+    CONFIG.pl_link_cap_max_link_width {X16} \
     CONFIG.ref_clk_freq {100_MHz} \
   ] $qdma_0
 
@@ -1797,7 +1797,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   # Restore current instance
   current_bd_instance $oldCurInst
 
-  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1809,4 +1808,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
 
 create_root_design ""
 
+
+common::send_gid_msg -ssname BD::TCL -id 2053 -severity "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
