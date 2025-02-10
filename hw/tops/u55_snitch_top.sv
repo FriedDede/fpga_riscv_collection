@@ -23,16 +23,16 @@ module snitch_u55_xilinx_bd
   input  logic          prst_n          , //reset
   input                 HBM_ref_clk_p   ,
   input                 HBM_ref_clk_n   ,
-  output wire [7:0]     pci_exp_txp     ,
-  output wire [7:0]     pci_exp_txn     ,
-  input  wire [7:0]     pci_exp_rxp     ,
-  input  wire [7:0]     pci_exp_rxn     ,
+  output wire [15:0]    pcie_x16_txp     ,
+  output wire [15:0]    pcie_x16_txn     ,
+  input  wire [15:0]    pcie_x16_rxp     ,
+  input  wire [15:0]    pcie_x16_rxn     ,
   input  logic          uart_rx         ,
   output logic          uart_tx
 );
 
 localparam BOOT_ADDR        = 32'h0000_0000;
-localparam CORE_NUMBER      = 5;
+localparam CORE_NUMBER      = 1;
 localparam CLUSTER_NUMBER   = 12;
 localparam TOTAL_CORE_NUMBER = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER     = 3; // uart, timer, plic
@@ -178,7 +178,8 @@ assign uncore_areset_n = core_areset_n;
             .AXI_ID_WIDTH   ( AxiIdWidthCore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_snitch2mux[(3*CORE_NUMBER) - 1 : 0]();
-            for ( genvar j=0; j<CORE_NUMBER; ++j) begin  : core_gen
+        
+        for ( genvar j=0; j<CORE_NUMBER; ++j) begin  : core_gen
             snitch_cluster_pkg::narrow_out_req_t    axi_icache_snitch_req;
             snitch_cluster_pkg::narrow_out_resp_t   axi_icache_snitch_resp;
             snitch_cluster_pkg::narrow_out_req_t    [1:0]axi_data_snitch_req;
@@ -189,21 +190,21 @@ assign uncore_areset_n = core_areset_n;
             .IdWidthIn          (AxiIdWidthCore),
             .BootAddr           (BOOT_ADDR),
             .SnitchPMACfg       (snitch_cluster_pkg::SnitchPMACfg)    
-        ) i_snitch(
-            .clk_i                  (clk),
-            .rst_ni                 (core_areset_n),
-            .hart_id_i              ((j)), // id unique only in the cluster
-            .irq_i                  (core_irq_i[(i+1)*j]),
-            // icache
-            .inst_out_req_o         (axi_icache_snitch_req     ),
-            .inst_out_resp_i        (axi_icache_snitch_resp    ),
-            // integer core
-            .data_core_out_req_o    (axi_data_snitch_req    [0]),
-            .data_core_out_resp_i   (axi_data_snitch_resp   [0]),
-            // fpu
-            .data_fpu_out_req_o     (axi_data_snitch_req    [1]),
-            .data_fpu_out_resp_i    (axi_data_snitch_resp   [1])
-        );
+            ) i_snitch(
+                .clk_i                  (clk),
+                .rst_ni                 (core_areset_n),
+                .hart_id_i              ((j)), // id unique only in the cluster
+                .irq_i                  (core_irq_i[(i+1)*j]),
+                // icache
+                .inst_out_req_o         (axi_icache_snitch_req     ),
+                .inst_out_resp_i        (axi_icache_snitch_resp    ),
+                // integer core
+                .data_core_out_req_o    (axi_data_snitch_req    [0]),
+                .data_core_out_resp_i   (axi_data_snitch_resp   [0]),
+                // fpu
+                .data_fpu_out_req_o     (axi_data_snitch_req    [1]),
+                .data_fpu_out_resp_i    (axi_data_snitch_resp   [1])
+            );
             // integer core lsu
             `AXI_ASSIGN_FROM_REQ (axi_snitch2mux[0 + (3*j)], axi_data_snitch_req[0])
             `AXI_ASSIGN_TO_RESP  (axi_data_snitch_resp[0], axi_snitch2mux[0 + (3*j)])
@@ -784,10 +785,10 @@ assign uncore_areset_n = core_areset_n;
         .S11_AXI_0_wvalid   (axi_dram[11].w_valid),   
         // interface 
         .axi_clk_ariane_0   (clk),
-        .pcie_mgt_0_rxn     (pci_exp_rxn),
-        .pcie_mgt_0_rxp     (pci_exp_rxp),
-        .pcie_mgt_0_txn     (pci_exp_txn),
-        .pcie_mgt_0_txp     (pci_exp_txp),
+        .pcie_mgt_0_rxn     (pcie_x16_rxn),
+        .pcie_mgt_0_rxp     (pcie_x16_rxp),
+        .pcie_mgt_0_txn     (pcie_x16_txn),
+        .pcie_mgt_0_txp     (pcie_x16_txp),
         .sys_clk_0          (sys_clk),
         .sys_clk_gt_0       (sys_clk_gt),
         .sys_rst_n_0        (sys_rst_n_c),

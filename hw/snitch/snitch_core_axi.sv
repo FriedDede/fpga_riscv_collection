@@ -253,7 +253,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 // core side spill register (maybe is not necessary ?)
   isochronous_spill_register #(
     .T (acc_resp_t),
-    .Bypass (!IsoCrossing)
+    .Bypass ('1)
   ) i_spill_register_acc_demux_resp (
     .src_clk_i   ( clk_i          ),
     .src_rst_ni  ( rst_ni         ),
@@ -487,7 +487,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
 // decouple CORE data AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -506,7 +506,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
 // decouple FPU data AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),
@@ -525,7 +525,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 
 // decouple inst AXI output port
   axi_cut #(
-    .Bypass     ( '0 ),
+    .Bypass     ( '1 ),
     .aw_chan_t  ( axi_slv_aw_chan_t ),
     .w_chan_t   ( axi_slv_w_chan_t ),
     .b_chan_t   ( axi_slv_b_chan_t ),

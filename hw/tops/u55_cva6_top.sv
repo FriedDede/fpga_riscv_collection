@@ -1,15 +1,3 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
-// Copyright and related rights are licensed under the Solderpad Hardware
-// License, Version 0.51 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License at
-// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
-// or agreed to in writing, software, hardware and materials distributed under
-// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
-
-// Description: Xilinx FPGA top-level
-// Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
 // Copyright 2024 Politecnico di Milano.
 // Copyright and related rights are licensed under the Solderpad Hardware
@@ -247,7 +235,7 @@ assign uncore_areset_n = core_areset_n;
          ) axi_xbar2uncore[3:0]();
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
             .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_rom();
@@ -345,13 +333,13 @@ assign uncore_areset_n = core_areset_n;
                 .mst    (axi_rom)
             );
 
-            logic                    rom_req;
-            logic [AxiAddrWidth-1:0] rom_addr;
-            logic [AxiDataWidth-1:0] rom_rdata;
-            logic                    rom_rvalid;
+            logic                           rom_req;
+            logic [AxiAddrWidth-1:0]        rom_addr;
+            logic [AxiPerifDataWidth-1:0]   rom_rdata;
+            logic                           rom_rvalid;
             axi_to_mem_intf #(
                 .ADDR_WIDTH ( AxiAddrWidth),
-                .DATA_WIDTH ( AxiDataWidth),
+                .DATA_WIDTH ( AxiPerifDataWidth),
                 .ID_WIDTH   ( AxiIdWidthToUncore),
                 .USER_WIDTH ( AxiUserWidth),
                 .NUM_BANKS  ( 1)

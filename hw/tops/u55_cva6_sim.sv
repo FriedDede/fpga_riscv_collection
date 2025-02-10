@@ -27,18 +27,33 @@ module cva6_u55_sim (
     output logic          uart_tx
 );
 
-localparam BOOT_ADDR        = 32'h0000_0000;
-localparam CORE_NUMBER      = 8;
-localparam CLUSTER_NUMBER   = 1;
-localparam TOTAL_CORE_NUMBER = CORE_NUMBER * CLUSTER_NUMBER;
-localparam PERIF_NUMBER     = 3; // uart, timer, plic
-localparam DRAM_CH_NUMBER   = CORE_NUMBER; // snitch clusters
-localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 32
-localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
-localparam AxiIdWidthCore   = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
-localparam AxiIdWidthToPerifs = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
-localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
+
+// design parameter
+localparam BOOT_ADDR            = 32'h0000_0000;
+localparam CORE_NUMBER          = 4;
+localparam CLUSTER_NUMBER       = 4;
+localparam TOTAL_CORE_NUMBER     = CORE_NUMBER * CLUSTER_NUMBER;
+localparam PERIF_NUMBER         = 3;            // uart, timer, plic
+localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER;  // snitch clusters
+
+// axi paramenter
+localparam AxiAddrWidth         = 32;           // 32
+localparam AxiDataWidth         = 256;          // 256
+localparam AxiPerifDataWidth    = 64;           // 64
+localparam AxiIdWidthCore       = 4;            // 4 
+localparam AxiIdWidthToUncore   = AxiIdWidthCore + $clog2(CORE_NUMBER);          // 4
+localparam AxiIdWidthToPerifs   = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
+localparam AxiUserWidth         = 1;
+
+// axi typedef
+typedef logic [AxiAddrWidth-1:0]        addr_t;
+typedef logic [AxiDataWidth-1:0]        data_t;
+typedef logic [AxiDataWidth/8-1:0]      strb_t;
+typedef logic [AxiUserWidth-1:0]        user_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_in_id_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_out_id_t;
+`AXI_TYPEDEF_ALL(cva6_in, addr_t, narrow_in_id_t, data_t, strb_t, user_t)
+`AXI_TYPEDEF_ALL(cva6_out, addr_t, narrow_out_id_t, data_t, strb_t, user_t)
 
 // xbar config
 localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
@@ -69,7 +84,7 @@ localparam axi_pkg::xbar_cfg_t perif_xbar_cfg = '{
     AxiIdUsedSlvPorts:  AxiIdWidthToUncore,
     UniqueIds:          '0,
     AxiAddrWidth:       AxiAddrWidth,
-    AxiDataWidth:       AxiDataWidth,
+    AxiDataWidth:       AxiPerifDataWidth,
     NoAddrRules:        PERIF_NUMBER
 };
 
@@ -141,13 +156,13 @@ AXI_BUS #(
 ) axi_dram[DRAM_CH_NUMBER-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
+    .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
+    .AXI_DATA_WIDTH ( AxiPerifDataWidth  ),
     .AXI_ID_WIDTH   ( AxiIdWidthToPerifs ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) axi_peripherals[PERIF_NUMBER - 1:0]();
@@ -178,12 +193,11 @@ assign uncore_areset_n = core_areset_n;
         ) axi_cva62xbar[CORE_NUMBER - 1 : 0]();
         
         for ( genvar j=0; j<CORE_NUMBER; ++j) begin  : core_gen 
-            snitch_cluster_pkg::narrow_out_req_t    axi_cva6_req;
-            snitch_cluster_pkg::narrow_out_resp_t   axi_cva6_resp;
-            
+            cva6_out_req_t   cva6_req;
+            cva6_out_resp_t   cva6_resp;
             cva6 #(
-                .noc_req_t(snitch_cluster_pkg::narrow_out_req_t),
-                .noc_resp_t(snitch_cluster_pkg::narrow_out_resp_t)
+                .noc_req_t(cva6_out_req_t),
+                .noc_resp_t(cva6_out_resp_t)
             )cva6_instance(
                 .clk_i(clk),
                 .rst_ni(core_areset_n),
@@ -199,13 +213,13 @@ assign uncore_areset_n = core_areset_n;
                 .rvfi_probes_o(),
                 .cvxif_req_o(),
                 .cvxif_resp_i(),
-                .noc_req_o(axi_cva6_req),
-                .noc_resp_i(axi_cva6_resp)
+                .noc_req_o(cva6_req),
+                .noc_resp_i(cva6_resp)
             );
             
             // integer core lsu
-            `AXI_ASSIGN_FROM_REQ (axi_cva62xbar[j], axi_cva6_req)
-            `AXI_ASSIGN_TO_RESP  (axi_cva6_resp, axi_cva62xbar[j])
+            `AXI_ASSIGN_FROM_REQ (axi_cva62xbar[j], cva6_req)
+            `AXI_ASSIGN_TO_RESP  (cva6_resp, axi_cva62xbar[j])
 
         end : core_gen
 
@@ -217,13 +231,13 @@ assign uncore_areset_n = core_areset_n;
          ) axi_xbar2uncore[3:0]();
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
             .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_rom();
         AXI_BUS #(
             .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
             .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_clint();
@@ -242,15 +256,41 @@ assign uncore_areset_n = core_areset_n;
             .default_mst_port_i('0)
         );
 
-        `AXI_ASSIGN(axi_rom, axi_xbar2uncore[0])
-        `AXI_ASSIGN(axi_dram[i], axi_xbar2uncore[1])
-        `AXI_ASSIGN(axi_uncore2pxbar[i], axi_xbar2uncore[2])
-        `AXI_ASSIGN(axi_clint, axi_xbar2uncore[3])
+        // DRAM
+        `AXI_ASSIGN(axi_dram[i],axi_xbar2uncore[1])
 
-        // clint logic
+        // Pheripherals (PLIC, UART, TIMER)
+        axi_dw_converter_intf #(
+                    .AXI_ID_WIDTH            (AxiIdWidthToPerifs),
+                    .AXI_ADDR_WIDTH          (AxiAddrWidth),
+                    .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
+                    .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
+                    .AXI_USER_WIDTH          (AxiUserWidth),
+                    .AXI_MAX_READS           (8)
+                ) i_dw_conv_perif (
+                    .clk_i  (clk),
+                    .rst_ni (uncore_areset_n),
+                    .slv    (axi_xbar2uncore[2]),
+                    .mst    (axi_uncore2pxbar[i])
+                );
+        // CLINT
+        axi_dw_converter_intf #(
+                .AXI_ID_WIDTH            (AxiIdWidthToUncore),
+                .AXI_ADDR_WIDTH          (AxiAddrWidth),
+                .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
+                .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
+                .AXI_USER_WIDTH          (AxiUserWidth),
+                .AXI_MAX_READS           (8)
+            ) i_dw_conv_clint (
+                .clk_i  (clk),
+                .rst_ni (uncore_areset_n),
+                .slv    (axi_xbar2uncore[3]),
+                .mst    (axi_clint)
+            );
+
         axi_clint #(
-            .AddrWidth(AxiDataWidth),
-            .DataWidth(AxiDataWidth),
+            .AddrWidth(AxiAddrWidth),
+            .DataWidth(AxiPerifDataWidth),
             .IdWidthIn(AxiIdWidthToUncore),
             .UserWidth(AxiUserWidth),
             .NR_CORES(1)
@@ -263,41 +303,55 @@ assign uncore_areset_n = core_areset_n;
             .timer_irq_o(timer_irq),
             .ipi_o(ipi)
         );
-        
-        // ROM
-        logic                    rom_req;
-        logic [AxiAddrWidth-1:0] rom_addr;
-        logic [AxiDataWidth-1:0] rom_rdata;
-        logic                    rom_rvalid;
 
-        axi_to_mem_intf #(
-            .ADDR_WIDTH ( AxiAddrWidth),
-            .DATA_WIDTH ( AxiDataWidth),
-            .ID_WIDTH   ( AxiIdWidthToUncore),
-            .USER_WIDTH ( AxiUserWidth),
-            .NUM_BANKS  ( 1)
-        ) i_axi_to_mem (
-            .clk_i       ( clk),
-            .rst_ni      ( uncore_areset_n),
-            .busy_o      ( ),
-            .slv         ( axi_rom),
-            .mem_req_o   ( rom_req),
-            .mem_gnt_i   ( '1),
-            .mem_addr_o  ( rom_addr),
-            .mem_wdata_o ( ),
-            .mem_strb_o  ( ),
-            .mem_atop_o  ( ),
-            .mem_we_o    ( ),
-            .mem_rvalid_i( rom_rvalid),
-            .mem_rdata_i ( rom_rdata)
-        );
-        bootrom i_bootrom (
-            .clk_i      ( clk       ),
-            .req_i      ( rom_req   ),
-            .addr_i     ( rom_addr  ),
-            .rdata_o    ( rom_rdata ),
-            .rvalid_o   (rom_rvalid )
-        );
+
+        // ROM
+            logic                           rom_req;
+            logic [AxiAddrWidth-1:0]        rom_addr;
+            logic [AxiPerifDataWidth-1:0]   rom_rdata;
+            logic                           rom_rvalid;
+
+            axi_dw_converter_intf #(
+                    .AXI_ID_WIDTH            (AxiIdWidthToUncore),
+                    .AXI_ADDR_WIDTH          (AxiAddrWidth),
+                    .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
+                    .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
+                    .AXI_USER_WIDTH          (AxiUserWidth),
+                    .AXI_MAX_READS           (8)
+                ) i_dw_conv_rom (
+                    .clk_i  (clk),
+                    .rst_ni (uncore_areset_n),
+                    .slv    (axi_xbar2uncore[0]),
+                    .mst    (axi_rom)
+                );
+            axi_to_mem_intf #(
+                .ADDR_WIDTH ( AxiAddrWidth),
+                .DATA_WIDTH ( AxiPerifDataWidth),
+                .ID_WIDTH   ( AxiIdWidthToUncore),
+                .USER_WIDTH ( AxiUserWidth),
+                .NUM_BANKS  ( 1)
+            ) i_axi_to_mem (
+                .clk_i       ( clk),
+                .rst_ni      ( uncore_areset_n),
+                .busy_o      ( ),
+                .slv         ( axi_rom),
+                .mem_req_o   ( rom_req),
+                .mem_gnt_i   ( '1),
+                .mem_addr_o  ( rom_addr),
+                .mem_wdata_o ( ),
+                .mem_strb_o  ( ),
+                .mem_atop_o  ( ),
+                .mem_we_o    ( ),
+                .mem_rvalid_i( rom_rvalid),
+                .mem_rdata_i ( rom_rdata)
+            );
+            bootrom i_bootrom (
+                .clk_i      ( clk       ),
+                .req_i      ( rom_req   ),
+                .addr_i     ( rom_addr  ),
+                .rdata_o    ( rom_rdata ),
+                .rvalid_o   (rom_rvalid )
+            );
 
     end : cluster_gen
 // ----------------
@@ -470,18 +524,6 @@ end
         .rst_no       ( core_areset_n            ),
         .init_no      (                          ) // keep open
     );
-
-    logic hbm_apb_areset_n;
-
-    proc_sys_reset_0 i_proc_sys_reset(
-        .aux_reset_in(1'b1),
-        .dcm_locked(1'b1),
-        .mb_debug_sys_rst(1'b0),
-        .slowest_sync_clk(hbm_apb_clk),
-        .ext_reset_in(sys_rst_n_c),
-        .peripheral_aresetn(hbm_apb_areset_n)
-    );
-
 
     // -----------------
     // END
