@@ -143,6 +143,9 @@ xilinx.com:ip:system_ila:1.1\
 xilinx.com:ip:clk_wiz:6.0\
 xilinx.com:ip:proc_sys_reset:5.0\
 xilinx.com:ip:qdma:5.0\
+xilinx.com:ip:xlconstant:1.1\
+xilinx.com:ip:axi_bram_ctrl:4.1\
+xilinx.com:ip:blk_mem_gen:8.4\
 "
 
    set list_ips_missing ""
@@ -829,12 +832,12 @@ proc create_root_design { parentCell } {
     CONFIG.AUTO_PRIMITIVE {PLL} \
     CONFIG.CLKIN1_JITTER_PS {40.0} \
     CONFIG.CLKOUT1_DRIVES {Buffer} \
-    CONFIG.CLKOUT1_JITTER {107.111} \
-    CONFIG.CLKOUT1_PHASE_ERROR {85.928} \
+    CONFIG.CLKOUT1_JITTER {120.940} \
+    CONFIG.CLKOUT1_PHASE_ERROR {91.907} \
     CONFIG.CLKOUT2_DRIVES {Buffer} \
-    CONFIG.CLKOUT2_JITTER {93.521} \
-    CONFIG.CLKOUT2_PHASE_ERROR {85.928} \
-    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {200.000} \
+    CONFIG.CLKOUT2_JITTER {93.829} \
+    CONFIG.CLKOUT2_PHASE_ERROR {91.907} \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {400.000} \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT3_DRIVES {Buffer} \
     CONFIG.CLKOUT4_DRIVES {Buffer} \
@@ -847,20 +850,20 @@ proc create_root_design { parentCell } {
     CONFIG.CLK_OUT2_PORT {axi_clk} \
     CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
     CONFIG.MMCM_BANDWIDTH {OPTIMIZED} \
-    CONFIG.MMCM_CLKFBOUT_MULT_F {4} \
+    CONFIG.MMCM_CLKFBOUT_MULT_F {14} \
     CONFIG.MMCM_CLKIN1_PERIOD {4.000} \
     CONFIG.MMCM_CLKIN2_PERIOD {10.0} \
-    CONFIG.MMCM_CLKOUT0_DIVIDE_F {10} \
-    CONFIG.MMCM_CLKOUT1_DIVIDE {5} \
+    CONFIG.MMCM_CLKOUT0_DIVIDE_F {12} \
+    CONFIG.MMCM_CLKOUT1_DIVIDE {3} \
     CONFIG.MMCM_COMPENSATION {AUTO} \
-    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
+    CONFIG.MMCM_DIVCLK_DIVIDE {3} \
     CONFIG.NUM_OUT_CLKS {2} \
     CONFIG.OPTIMIZE_CLOCKING_STRUCTURE_EN {true} \
     CONFIG.PRIMITIVE {Auto} \
     CONFIG.PRIM_SOURCE {No_buffer} \
     CONFIG.RESET_BOARD_INTERFACE {Custom} \
     CONFIG.SECONDARY_SOURCE {Single_ended_clock_capable_pin} \
-    CONFIG.USE_LOCKED {false} \
+    CONFIG.USE_LOCKED {true} \
     CONFIG.USE_PHASE_ALIGNMENT {false} \
     CONFIG.USE_RESET {false} \
     CONFIG.USE_SAFE_CLOCK_STARTUP {false} \
@@ -878,11 +881,32 @@ proc create_root_design { parentCell } {
   set_property -dict [list \
     CONFIG.PCIE_BOARD_INTERFACE {pci_express_x16} \
     CONFIG.dma_intf_sel_qdma {AXI_MM} \
-    CONFIG.pf0_bar2_enabled_qdma {false} \
+    CONFIG.mode_selection {Advanced} \
+    CONFIG.pf0_Use_Class_Code_Lookup_Assistant_qdma {false} \
+    CONFIG.pf0_bar2_enabled_qdma {true} \
     CONFIG.pl_link_cap_max_link_speed {8.0_GT/s} \
     CONFIG.pl_link_cap_max_link_width {X16} \
     CONFIG.ref_clk_freq {100_MHz} \
   ] $qdma_0
+
+
+  # Create instance: const_1, and set properties
+  set const_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 const_1 ]
+
+  # Create instance: axi_bram_ctrl_0, and set properties
+  set axi_bram_ctrl_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_bram_ctrl:4.1 axi_bram_ctrl_0 ]
+  set_property -dict [list \
+    CONFIG.PROTOCOL {AXI4LITE} \
+    CONFIG.SINGLE_PORT_BRAM {1} \
+  ] $axi_bram_ctrl_0
+
+
+  # Create instance: blk_mem_gen_0, and set properties
+  set blk_mem_gen_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:blk_mem_gen:8.4 blk_mem_gen_0 ]
+
+  # Create instance: axi_smc, and set properties
+  set axi_smc [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc ]
+  set_property CONFIG.NUM_SI {1} $axi_smc
 
 
   # Create interface connections
@@ -898,7 +922,10 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net S09_AXI_0_1 [get_bd_intf_ports S09_AXI_0] [get_bd_intf_pins smartconnect_0/S10_AXI]
   connect_bd_intf_net -intf_net S10_AXI_0_1 [get_bd_intf_ports S10_AXI_0] [get_bd_intf_pins smartconnect_0/S11_AXI]
   connect_bd_intf_net -intf_net S11_AXI_0_1 [get_bd_intf_ports S11_AXI_0] [get_bd_intf_pins smartconnect_0/S12_AXI]
+  connect_bd_intf_net -intf_net axi_bram_ctrl_0_BRAM_PORTA [get_bd_intf_pins blk_mem_gen_0/BRAM_PORTA] [get_bd_intf_pins axi_bram_ctrl_0/BRAM_PORTA]
+  connect_bd_intf_net -intf_net axi_smc_M00_AXI [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins axi_bram_ctrl_0/S_AXI]
   connect_bd_intf_net -intf_net qdma_0_M_AXI [get_bd_intf_pins smartconnect_0/S01_AXI] [get_bd_intf_pins qdma_0/M_AXI]
+  connect_bd_intf_net -intf_net qdma_0_M_AXI_LITE [get_bd_intf_pins qdma_0/M_AXI_LITE] [get_bd_intf_pins axi_smc/S00_AXI]
   connect_bd_intf_net -intf_net qdma_0_pcie_mgt [get_bd_intf_ports pcie_mgt_0] [get_bd_intf_pins qdma_0/pcie_mgt]
   connect_bd_intf_net -intf_net smartconnect_0_M00_AXI [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins hbm_0/SAXI_15_8HI]
 connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
@@ -923,9 +950,15 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   [get_bd_pins proc_sys_reset_1/slowest_sync_clk] \
   [get_bd_pins smartconnect_0/aclk2] \
   [get_bd_pins system_ila_0/clk]
+  connect_bd_net -net clk_wiz_0_locked  [get_bd_pins clk_wiz_0/locked] \
+  [get_bd_pins proc_sys_reset_1/dcm_locked] \
+  [get_bd_pins proc_sys_reset_0/dcm_locked]
   connect_bd_net -net pcie_perstn_1  [get_bd_ports sys_rst_n_0] \
   [get_bd_pins qdma_0/sys_rst_n] \
-  [get_bd_pins system_ila_1/probe0]
+  [get_bd_pins system_ila_1/probe0] \
+  [get_bd_pins qdma_0/soft_reset_n] \
+  [get_bd_pins proc_sys_reset_0/ext_reset_in] \
+  [get_bd_pins proc_sys_reset_1/ext_reset_in]
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn  [get_bd_pins proc_sys_reset_0/peripheral_aresetn] \
   [get_bd_pins hbm_0/APB_0_PRESET_N] \
   [get_bd_pins hbm_0/APB_1_PRESET_N] \
@@ -933,20 +966,23 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   connect_bd_net -net proc_sys_reset_1_peripheral_aresetn  [get_bd_pins proc_sys_reset_1/peripheral_aresetn] \
   [get_bd_pins hbm_0/AXI_15_ARESET_N] \
   [get_bd_pins hbm_0/AXI_16_ARESET_N] \
-  [get_bd_pins system_ila_0/resetn]
+  [get_bd_pins system_ila_0/resetn] \
+  [get_bd_pins system_ila_1/probe2]
   connect_bd_net -net sys_clk_0_1  [get_bd_ports sys_clk_0] \
   [get_bd_pins qdma_0/sys_clk]
   connect_bd_net -net sys_clk_gt_0_1  [get_bd_ports sys_clk_gt_0] \
   [get_bd_pins qdma_0/sys_clk_gt]
   connect_bd_net -net xdma_0_axi_aclk  [get_bd_pins qdma_0/axi_aclk] \
   [get_bd_pins axi4_boot_check_0/aclk] \
+  [get_bd_pins smartconnect_0/aclk1] \
   [get_bd_pins clk_wiz_0/clk_in1] \
-  [get_bd_pins smartconnect_0/aclk1]
+  [get_bd_pins axi_smc/aclk] \
+  [get_bd_pins axi_bram_ctrl_0/s_axi_aclk]
   connect_bd_net -net xdma_0_axi_aresetn  [get_bd_pins qdma_0/axi_aresetn] \
   [get_bd_pins axi4_boot_check_0/aresetn] \
-  [get_bd_pins proc_sys_reset_0/ext_reset_in] \
-  [get_bd_pins proc_sys_reset_1/ext_reset_in] \
-  [get_bd_pins smartconnect_0/aresetn]
+  [get_bd_pins smartconnect_0/aresetn] \
+  [get_bd_pins axi_bram_ctrl_0/s_axi_aresetn] \
+  [get_bd_pins axi_smc/aresetn]
   connect_bd_net -net xdma_0_m_axi_awaddr  [get_bd_pins qdma_0/m_axi_awaddr] \
   [get_bd_pins axi4_boot_check_0/s_axi_awaddr] \
   [get_bd_pins smartconnect_0/S01_AXI_awaddr]
@@ -956,6 +992,9 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   connect_bd_net -net xdma_0_m_axi_wvalid  [get_bd_pins qdma_0/m_axi_wvalid] \
   [get_bd_pins axi4_boot_check_0/s_axi_wvalid] \
   [get_bd_pins smartconnect_0/S01_AXI_wvalid]
+  connect_bd_net -net xlconstant_0_dout  [get_bd_pins const_1/dout] \
+  [get_bd_pins qdma_0/tm_dsc_sts_rdy] \
+  [get_bd_pins qdma_0/qsts_out_rdy]
 
   # Create address segments
   assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces qdma_0/M_AXI] [get_bd_addr_segs hbm_0/SAXI_15_8HI/HBM_MEM00] -force
@@ -990,6 +1029,7 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   assign_bd_address -offset 0x0003A0000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces qdma_0/M_AXI] [get_bd_addr_segs hbm_0/SAXI_16_8HI/HBM_MEM29] -force
   assign_bd_address -offset 0x0003C0000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces qdma_0/M_AXI] [get_bd_addr_segs hbm_0/SAXI_16_8HI/HBM_MEM30] -force
   assign_bd_address -offset 0x0003E0000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces qdma_0/M_AXI] [get_bd_addr_segs hbm_0/SAXI_16_8HI/HBM_MEM31] -force
+  assign_bd_address -offset 0xC0000000 -range 0x00002000 -target_address_space [get_bd_addr_spaces qdma_0/M_AXI_LITE] [get_bd_addr_segs axi_bram_ctrl_0/S_AXI/Mem0] -force
   assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces S00_AXI_0] [get_bd_addr_segs hbm_0/SAXI_15_8HI/HBM_MEM00] -force
   assign_bd_address -offset 0x20000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces S00_AXI_0] [get_bd_addr_segs hbm_0/SAXI_15_8HI/HBM_MEM01] -force
   assign_bd_address -offset 0x40000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces S01_AXI_0] [get_bd_addr_segs hbm_0/SAXI_15_8HI/HBM_MEM02] -force
@@ -1797,6 +1837,7 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   # Restore current instance
   current_bd_instance $oldCurInst
 
+  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1808,6 +1849,4 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
 
 create_root_design ""
 
-
-common::send_gid_msg -ssname BD::TCL -id 2053 -severity "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
