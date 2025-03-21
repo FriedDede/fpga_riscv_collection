@@ -9,7 +9,7 @@ int main()
     asm volatile ("csrr %0, mhartid" : "=r"(hartid));
     if (hartid == 0)
     {
-        init_uart(CORE_CLK,UART_BAUD);
+        //init_uart(CORE_CLK,UART_BAUD);
     }
 
     // jump to the start address of the payload 
@@ -163,10 +163,10 @@ int main()
         break;
     }
 
-    if (hartid == 0)
-    {
-        print_uart("Success\n");
-    }
+    // if (hartid == 0)
+    // {
+    //     print_uart("Success\n");
+    // }
     return 0;
 }
 

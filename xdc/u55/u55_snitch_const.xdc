@@ -23,6 +23,13 @@ set_property PACKAGE_PIN BK41 [get_ports uart_rx]
 set_property PACKAGE_PIN BJ41 [get_ports uart_tx]
 set_property IOSTANDARD LVCMOS18 [get_ports uart_?x]
 
+#debug
+
+set_property C_CLK_INPUT_FREQ_HZ 100000000 [get_debug_cores dbg_hub]
+set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
+set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
+connect_debug_port dbg_hub/clk [get_nets */HBM_REF_CLK_0_0]
+
 #pcie connection
 # pcie transceiver
 set_property    PACKAGE_PIN     BC1             [get_ports      {pcie_x16_rxn[15]}      ] ; 
@@ -89,6 +96,8 @@ set_property    PACKAGE_PIN     AP9             [get_ports      {pcie_x16_txp[3]
 set_property    PACKAGE_PIN     AN11            [get_ports      {pcie_x16_txp[2]}] ; 
 set_property    PACKAGE_PIN     AM9             [get_ports      {pcie_x16_txp[1]}] ; 
 set_property    PACKAGE_PIN     AL11            [get_ports      {pcie_x16_txp[0]}] ;
+
+
 
 set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AlternateCLBRouting [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AlternateReplication [get_runs impl_1]

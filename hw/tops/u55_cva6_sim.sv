@@ -19,26 +19,26 @@ module cva6_u55_sim (
     input  logic          prst_n          , //reset
     input                 HBM_ref_clk_p   ,
     input                 HBM_ref_clk_n   ,
-    output wire [7:0]     pci_exp_txp     ,
-    output wire [7:0]     pci_exp_txn     ,
-    input  wire [7:0]     pci_exp_rxp     ,
-    input  wire [7:0]     pci_exp_rxn     ,
+    output wire [15:0]     pci_exp_txp     ,
+    output wire [15:0]     pci_exp_txn     ,
+    input  wire [15:0]     pci_exp_rxp     ,
+    input  wire [15:0]     pci_exp_rxn     ,
     input  logic          uart_rx         ,
     output logic          uart_tx
 );
 
 
 // design parameter
-localparam BOOT_ADDR            = 32'h0000_0000;
-localparam CORE_NUMBER          = 4;
-localparam CLUSTER_NUMBER       = 4;
+localparam BOOT_ADDR            = 64'h0000_0000;
+localparam CORE_NUMBER          = 2;
+localparam CLUSTER_NUMBER       = 2;
 localparam TOTAL_CORE_NUMBER     = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER         = 3;            // uart, timer, plic
 localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER;  // snitch clusters
 
 // axi paramenter
 localparam AxiAddrWidth         = 32;           // 32
-localparam AxiDataWidth         = 256;          // 256
+localparam AxiDataWidth         = 64;          // 256
 localparam AxiPerifDataWidth    = 64;           // 64
 localparam AxiIdWidthCore       = 4;            // 4 
 localparam AxiIdWidthToUncore   = AxiIdWidthCore + $clog2(CORE_NUMBER);          // 4
@@ -202,24 +202,24 @@ assign uncore_areset_n = core_areset_n;
                 .clk_i(clk),
                 .rst_ni(core_areset_n),
                 .boot_addr_i(BOOT_ADDR),
-                .hart_id_i((i+1)*j),
+                .hart_id_i(j),
                 // meip
-                .irq_i(plic_irq[(i+1)*j]),
+                .irq_i('0),
                 // msip
-                .ipi_i(ipi[j]),
+                .ipi_i('0),
                 // mtip
-                .time_irq_i(timer_irq[j]),
-                .debug_req_i(),
+                .time_irq_i('0),
+                .debug_req_i('0),
                 .rvfi_probes_o(),
                 .cvxif_req_o(),
-                .cvxif_resp_i(),
+                .cvxif_resp_i('0),
                 .noc_req_o(cva6_req),
                 .noc_resp_i(cva6_resp)
             );
             
             // integer core lsu
-            `AXI_ASSIGN_FROM_REQ (axi_cva62xbar[j], cva6_req)
-            `AXI_ASSIGN_TO_RESP  (cva6_resp, axi_cva62xbar[j])
+            `AXI_ASSIGN_FROM_REQ(axi_cva62xbar[j], cva6_req)
+            `AXI_ASSIGN_TO_RESP(cva6_resp, axi_cva62xbar[j])
 
         end : core_gen
 
@@ -241,6 +241,7 @@ assign uncore_areset_n = core_areset_n;
             .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
             .AXI_USER_WIDTH ( AxiUserWidth     )
         ) axi_clint();
+
         axi_xbar_intf #(
             .AXI_USER_WIDTH(AxiUserWidth),
             .Cfg(xbar_cfg),
@@ -260,33 +261,12 @@ assign uncore_areset_n = core_areset_n;
         `AXI_ASSIGN(axi_dram[i],axi_xbar2uncore[1])
 
         // Pheripherals (PLIC, UART, TIMER)
-        axi_dw_converter_intf #(
-                    .AXI_ID_WIDTH            (AxiIdWidthToPerifs),
-                    .AXI_ADDR_WIDTH          (AxiAddrWidth),
-                    .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
-                    .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
-                    .AXI_USER_WIDTH          (AxiUserWidth),
-                    .AXI_MAX_READS           (8)
-                ) i_dw_conv_perif (
-                    .clk_i  (clk),
-                    .rst_ni (uncore_areset_n),
-                    .slv    (axi_xbar2uncore[2]),
-                    .mst    (axi_uncore2pxbar[i])
-                );
+
+        `AXI_ASSIGN(axi_uncore2pxbar[i],axi_xbar2uncore[2])
+
         // CLINT
-        axi_dw_converter_intf #(
-                .AXI_ID_WIDTH            (AxiIdWidthToUncore),
-                .AXI_ADDR_WIDTH          (AxiAddrWidth),
-                .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
-                .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
-                .AXI_USER_WIDTH          (AxiUserWidth),
-                .AXI_MAX_READS           (8)
-            ) i_dw_conv_clint (
-                .clk_i  (clk),
-                .rst_ni (uncore_areset_n),
-                .slv    (axi_xbar2uncore[3]),
-                .mst    (axi_clint)
-            );
+
+        `AXI_ASSIGN(axi_clint ,axi_xbar2uncore[3])
 
         axi_clint #(
             .AddrWidth(AxiAddrWidth),
@@ -306,24 +286,13 @@ assign uncore_areset_n = core_areset_n;
 
 
         // ROM
+        `AXI_ASSIGN(axi_rom ,axi_xbar2uncore[0])
+
             logic                           rom_req;
             logic [AxiAddrWidth-1:0]        rom_addr;
             logic [AxiPerifDataWidth-1:0]   rom_rdata;
             logic                           rom_rvalid;
 
-            axi_dw_converter_intf #(
-                    .AXI_ID_WIDTH            (AxiIdWidthToUncore),
-                    .AXI_ADDR_WIDTH          (AxiAddrWidth),
-                    .AXI_SLV_PORT_DATA_WIDTH (AxiDataWidth),
-                    .AXI_MST_PORT_DATA_WIDTH (AxiPerifDataWidth),
-                    .AXI_USER_WIDTH          (AxiUserWidth),
-                    .AXI_MAX_READS           (8)
-                ) i_dw_conv_rom (
-                    .clk_i  (clk),
-                    .rst_ni (uncore_areset_n),
-                    .slv    (axi_xbar2uncore[0]),
-                    .mst    (axi_rom)
-                );
             axi_to_mem_intf #(
                 .ADDR_WIDTH ( AxiAddrWidth),
                 .DATA_WIDTH ( AxiPerifDataWidth),
@@ -496,7 +465,7 @@ end
     logic clock_reset;
     assign clock_reset = ~sys_rst_n_c;
 
-    xlnx_clk_gen_solo i_xlnx_clk_gen (
+    xlnx_clk_gen_sim i_xlnx_clk_gen (
         .clk_out1 ( clk           ), // 50 MHz
         .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
         .clk_out3 ( rtc  ),          // 10 Mhz rtc clk
@@ -518,7 +487,7 @@ end
     // ndmreset_n is driven high when pll locks and the board releases his external reset
     // then the logic can be resetted from the hbm_xdma_interface (unconnected in sim config)
     rstgen i_rstgen_main (
-        .clk_i        ( REF_CLK                  ),
+        .clk_i        ( clk                  ),
         .rst_ni       ( pll_locked & sys_rst_n_c ),
         .test_mode_i  ( '0                       ),
         .rst_no       ( core_areset_n            ),

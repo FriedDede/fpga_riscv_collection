@@ -448,7 +448,7 @@ end
     logic clock_reset;
     assign clock_reset = ~sys_rst_n_c;
 
-    xlnx_clk_gen_solo i_xlnx_clk_gen (
+    xlnx_clk_gen_sim i_xlnx_clk_gen (
         .clk_out1 ( clk           ), // 50 MHz
         .clk_out2 ( hbm_apb_clk   ), // 100 MHz clock
         .clk_out3 ( rtc  ),          // 10 Mhz rtc clk

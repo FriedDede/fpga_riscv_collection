@@ -6,7 +6,7 @@ PYTHON		=python3
  CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32d -Wall
 
 # ariane
-#CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
+# CFLAGS 		= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
 
 CCASFLAGS 	= -mcmodel=medany -mexplicit-relocs
 LDFLAGS 	= -nostdlib -nostartfiles

@@ -830,14 +830,14 @@ proc create_root_design { parentCell } {
   set clk_wiz_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0 ]
   set_property -dict [list \
     CONFIG.AUTO_PRIMITIVE {PLL} \
-    CONFIG.CLKIN1_JITTER_PS {40.0} \
+    CONFIG.CLKIN1_JITTER_PS {100.0} \
     CONFIG.CLKOUT1_DRIVES {Buffer} \
-    CONFIG.CLKOUT1_JITTER {120.940} \
-    CONFIG.CLKOUT1_PHASE_ERROR {91.907} \
+    CONFIG.CLKOUT1_JITTER {137.681} \
+    CONFIG.CLKOUT1_PHASE_ERROR {105.461} \
     CONFIG.CLKOUT2_DRIVES {Buffer} \
-    CONFIG.CLKOUT2_JITTER {93.829} \
-    CONFIG.CLKOUT2_PHASE_ERROR {91.907} \
-    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {400.000} \
+    CONFIG.CLKOUT2_JITTER {103.830} \
+    CONFIG.CLKOUT2_PHASE_ERROR {105.461} \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {450.000} \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT3_DRIVES {Buffer} \
     CONFIG.CLKOUT4_DRIVES {Buffer} \
@@ -850,13 +850,13 @@ proc create_root_design { parentCell } {
     CONFIG.CLK_OUT2_PORT {axi_clk} \
     CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
     CONFIG.MMCM_BANDWIDTH {OPTIMIZED} \
-    CONFIG.MMCM_CLKFBOUT_MULT_F {14} \
-    CONFIG.MMCM_CLKIN1_PERIOD {4.000} \
-    CONFIG.MMCM_CLKIN2_PERIOD {10.0} \
-    CONFIG.MMCM_CLKOUT0_DIVIDE_F {12} \
-    CONFIG.MMCM_CLKOUT1_DIVIDE {3} \
+    CONFIG.MMCM_CLKFBOUT_MULT_F {9} \
+    CONFIG.MMCM_CLKIN1_PERIOD {10.000} \
+    CONFIG.MMCM_CLKIN2_PERIOD {10.000} \
+    CONFIG.MMCM_CLKOUT0_DIVIDE_F {9} \
+    CONFIG.MMCM_CLKOUT1_DIVIDE {2} \
     CONFIG.MMCM_COMPENSATION {AUTO} \
-    CONFIG.MMCM_DIVCLK_DIVIDE {3} \
+    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
     CONFIG.NUM_OUT_CLKS {2} \
     CONFIG.OPTIMIZE_CLOCKING_STRUCTURE_EN {true} \
     CONFIG.PRIMITIVE {Auto} \
@@ -934,7 +934,8 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   # Create port connections
   connect_bd_net -net HBM_REF_CLK_0_0_1  [get_bd_ports HBM_REF_CLK_0_0] \
   [get_bd_pins hbm_0/HBM_REF_CLK_0] \
-  [get_bd_pins hbm_0/HBM_REF_CLK_1]
+  [get_bd_pins hbm_0/HBM_REF_CLK_1] \
+  [get_bd_pins clk_wiz_0/clk_in1]
   connect_bd_net -net axi4_boot_check_0_start_o  [get_bd_pins axi4_boot_check_0/start_o] \
   [get_bd_ports master_areset_o_0]
   connect_bd_net -net axi_clk_ariane_0_1  [get_bd_ports axi_clk_ariane_0] \
@@ -975,7 +976,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   connect_bd_net -net xdma_0_axi_aclk  [get_bd_pins qdma_0/axi_aclk] \
   [get_bd_pins axi4_boot_check_0/aclk] \
   [get_bd_pins smartconnect_0/aclk1] \
-  [get_bd_pins clk_wiz_0/clk_in1] \
   [get_bd_pins axi_smc/aclk] \
   [get_bd_pins axi_bram_ctrl_0/s_axi_aclk]
   connect_bd_net -net xdma_0_axi_aresetn  [get_bd_pins qdma_0/axi_aresetn] \

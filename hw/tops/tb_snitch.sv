@@ -24,8 +24,8 @@ module snicth_tb;
 
     string binary = "";
     
-    //cva6_u55_sim #() dut (
-    snitch_u55_sim dut (
+    cva6_u55_sim #() dut (
+    //snitch_u55_sim dut (
         .sys_clk_p(clk_i), //100Mhz
         .sys_clk_n(~clk_i), //100Mhz
         .prst_n(rst_ni),
