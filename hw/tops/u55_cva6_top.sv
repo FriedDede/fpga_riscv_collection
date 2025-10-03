@@ -34,8 +34,8 @@ module cva6_u55_xilinx_bd
 
 // design parameter
 localparam BOOT_ADDR            = 64'h0000_0000;
-localparam CORE_NUMBER          = 2;
-localparam CLUSTER_NUMBER       = 2;
+localparam CORE_NUMBER          = 1;
+localparam CLUSTER_NUMBER       = 1;
 localparam TOTAL_CORE_NUMBER     = CORE_NUMBER * CLUSTER_NUMBER;
 localparam PERIF_NUMBER         = 3;            // uart, timer, plic
 localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER;  // snitch clusters

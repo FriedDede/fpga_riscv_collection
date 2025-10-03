@@ -106,7 +106,7 @@ module acc_dispatcher
     input acc_resp_t acc_resp_i
 );
 
-  `include "common_cells/registers.svh"
+  `include "common_cells_registers.svh"
 
   import cf_math_pkg::idx_width;
 

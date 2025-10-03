@@ -1,4 +1,4 @@
-set proj_dir $script_folder
+
 #### IPs
 
 set ipName xlnx_clk_gen_solo
@@ -14,4 +14,4 @@ set_property -dict [list CONFIG.PRIM_IN_FREQ {100.000} \
                         CONFIG.CLKIN1_JITTER_PS {50.0} \
                        ] [get_ips $ipName]
 
-generate_target {instantiation_template} [get_files $proj_dir/ariane_u55.srcs/sources_1/ip/$ipName/$ipName.xci
+generate_target {instantiation_template} [get_files $proj_dir/ariane_u55.srcs/sources_1/ip/$ipName/$ipName.xci]

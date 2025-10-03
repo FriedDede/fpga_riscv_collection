@@ -901,7 +901,7 @@ assign uncore_areset_n = core_areset_n;
     assign clock_reset = ~sys_rst_n_c;
 
     xlnx_clk_gen_solo i_xlnx_clk_gen (
-    .core_clk ( clk           ), // Core 100 MHz
+    .core_clk ( clk           ), // Core 50 MHz
     .reset    ( clock_reset   ),
     .locked   ( pll_locked    ),
     .clk_in1  ( SOC_REF_CLK ) // 100 Mhz ref clk

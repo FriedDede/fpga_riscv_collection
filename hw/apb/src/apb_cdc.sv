@@ -233,8 +233,8 @@ module apb_cdc #(
 endmodule // apb_cdc
 
 
-`include "apb/typedef.svh"
-`include "apb/assign.svh"
+`include "apb_typedef.svh"
+`include "apb_assign.svh"
 
 module apb_cdc_intf #(
   parameter int unsigned APB_ADDR_WIDTH = 0,
