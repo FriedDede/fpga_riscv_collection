@@ -9,5 +9,3 @@ set_property -dict [list CONFIG.PRIM_IN_FREQ {100.000} \
                         CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {50} \
                         CONFIG.CLKIN1_JITTER_PS {50.0} \
                        ] [get_ips $ipName]
-
-generate_target {instantiation_template} [get_files $proj_dir/ariane_u55.srcs/sources_1/ip/$ipName/$ipName.xci]

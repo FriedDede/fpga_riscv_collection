@@ -9,7 +9,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Description: AMD u55c cva6 hbm cluster top-level
+// Description: AMD u55c snitch hbm cluster top-level
 // Author: Andrea Motta 
 `include "axi_typedef.svh"
 `include "hbm_axi.svh"
