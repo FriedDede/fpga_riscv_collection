@@ -27,7 +27,6 @@ module cva6_u55_sim (
     output logic          uart_tx
 );
 
-
 // design parameter
 localparam BOOT_ADDR            = 64'h0000_0000;
 localparam CORE_NUMBER          = 2;

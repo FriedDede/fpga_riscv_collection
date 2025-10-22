@@ -24,6 +24,7 @@ module snitch_u55_xilinx_bd
   input  logic          prst_n          , //reset
   input                 HBM_ref_clk_p   ,
   input                 HBM_ref_clk_n   ,
+  output                hbm_cattrip,
   output wire [15:0]    pcie_x16_txp     ,
   output wire [15:0]    pcie_x16_txn     ,
   input  wire [15:0]    pcie_x16_rxp     ,
@@ -31,6 +32,13 @@ module snitch_u55_xilinx_bd
   input  logic          uart_rx         ,
   output logic          uart_tx
 );
+
+// Fix the CATTRIP issue for AU280, AU50, AU55C and AU55N custom flow
+//
+// This pin must be tied to 0; otherwise the board might be unrecoverable
+// after programming
+// Connect QSFP control lines through to the CMS for AU200 and AU250
+OBUF hbm_cattrip_obuf_inst (.I(1'b0), .O(hbm_cattrip));
 
 localparam BOOT_ADDR        = 32'h0000_0000;
 localparam CORE_NUMBER      = 1;
