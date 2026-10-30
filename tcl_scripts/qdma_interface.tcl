@@ -623,11 +623,14 @@ proc create_root_design { parentCell } {
 
   # Create ports
   set HBM_REF_CLK_0_0 [ create_bd_port -dir I -type clk HBM_REF_CLK_0_0 ]
-  set axi_clk_ariane_0 [ create_bd_port -dir I -type clk -freq_hz 50000000 axi_clk_ariane_0 ]
-  set_property -dict [ list \
-   CONFIG.ASSOCIATED_BUSIF {S00_AXI_0:S01_AXI_0:S02_AXI_0:S03_AXI_0:S04_AXI_0:S05_AXI_0:S06_AXI_0:S07_AXI_0:S08_AXI_0:S09_AXI_0:S10_AXI_0:S11_AXI_0} \
-   CONFIG.ASSOCIATED_RESET {axi_aresetn_0} \
- ] $axi_clk_ariane_0
+  # one clock per channel, driven by the crossbar of the cluster connected to the channel
+  for {set c 0} {$c < 12} {incr c} {
+    set ch [format "S%02d" $c]
+    set axi_clk_cluster [ create_bd_port -dir I -type clk -freq_hz 50000000 axi_clk_cluster_$ch ]
+    set_property -dict [ list \
+     CONFIG.ASSOCIATED_BUSIF ${ch}_AXI_0 \
+   ] $axi_clk_cluster
+  }
   set master_areset_o_0 [ create_bd_port -dir O master_areset_o_0 ]
   set sys_clk_0 [ create_bd_port -dir I -type clk sys_clk_0 ]
   set_property -dict [ list \
@@ -791,7 +794,7 @@ proc create_root_design { parentCell } {
   set smartconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_0 ]
   set_property -dict [list \
     CONFIG.ADVANCED_PROPERTIES {   __view__ { clocking { SW0 { ASSOCIATED_CLK aclk1 } } }  } \
-    CONFIG.NUM_CLKS {3} \
+    CONFIG.NUM_CLKS {14} \
     CONFIG.NUM_MI {2} \
     CONFIG.NUM_SI {13} \
   ] $smartconnect_0
@@ -879,14 +882,9 @@ proc create_root_design { parentCell } {
   # Create instance: qdma_0, and set properties
   set qdma_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:qdma:5.0 qdma_0 ]
   set_property -dict [list \
+   CONFIG.mode_selection {Advanced} \
     CONFIG.PCIE_BOARD_INTERFACE {pci_express_x16} \
     CONFIG.dma_intf_sel_qdma {AXI_MM} \
-    CONFIG.mode_selection {Advanced} \
-    CONFIG.pf0_Use_Class_Code_Lookup_Assistant_qdma {false} \
-    CONFIG.pf0_bar2_enabled_qdma {true} \
-    CONFIG.pl_link_cap_max_link_speed {8.0_GT/s} \
-    CONFIG.pl_link_cap_max_link_width {X16} \
-    CONFIG.ref_clk_freq {100_MHz} \
   ] $qdma_0
 
 
@@ -938,8 +936,14 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   [get_bd_pins clk_wiz_0/clk_in1]
   connect_bd_net -net axi4_boot_check_0_start_o  [get_bd_pins axi4_boot_check_0/start_o] \
   [get_bd_ports master_areset_o_0]
-  connect_bd_net -net axi_clk_ariane_0_1  [get_bd_ports axi_clk_ariane_0] \
+  # channel clocks: S00 -> aclk, S01..S11 -> aclk3..aclk13 (aclk1 qdma, aclk2 hbm)
+  connect_bd_net -net axi_clk_cluster_S00_1  [get_bd_ports axi_clk_cluster_S00] \
   [get_bd_pins smartconnect_0/aclk]
+  for {set c 1} {$c < 12} {incr c} {
+    set ch [format "S%02d" $c]
+    connect_bd_net -net axi_clk_cluster_${ch}_1  [get_bd_ports axi_clk_cluster_$ch] \
+    [get_bd_pins smartconnect_0/aclk[expr {$c + 2}]]
+  }
   connect_bd_net -net clk_wiz_0_apb_clk  [get_bd_pins clk_wiz_0/apb_clk] \
   [get_bd_pins hbm_0/APB_0_PCLK] \
   [get_bd_pins hbm_0/APB_1_PCLK] \

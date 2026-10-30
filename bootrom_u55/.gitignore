@@ -5,3 +5,4 @@ venv
 *.bin
 *.Xil*
 dump.txt
+*.dump

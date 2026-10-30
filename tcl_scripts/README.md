@@ -1,24 +1,29 @@
 # HBM teasting HW side for ALVEO U55C
 ## This folder contains:
     gen_clock.tcl           // generates clock primitives for compute subsystem
-    hbm_interface.tcl       // tcl script that generates testing harness bd
+    hbm_interface.tcl       // legacy xdma version of the bd (Vivado 2023.2), not used by the tops
     xdc/u55_const.xdc           // constraint file
     xdma_boot/axi_boot_check.v        // Verilog module triggers master reset when host sends reset code
     xdma_boot/tb_axi_boot_check.v     // His validation testbench (validated in xcelium)
     build_mcs.tcl           // build mcs and loads it on alveo u55c
-    hw/tops/u55_snitch_top.sv                  // example top design, xdma to hbm working, no PU attached to hbm axi channel
+    qdma_interface.tcl      // qdma + hbm block design (hbm_interface), used by create_project.tcl
+    create_project.tcl      // creates the vivado project of a core (snitch, cva6, veer)
+    run_impl.tcl            // synthesis, implementation, bitstream and reports
+    filelists/gen_filelist.py // rtl filelist of a top, following its module/package references
+    hw/cluster/tops/u55_snitch_top.sv                  // example top design, xdma to hbm working, no PU attached to hbm axi channel
 
 ## Usage
-    
-    1) generates bd in vivado:
-        - open vivado
-        - create a new prjoect with target alveo u55c accelerator
-        - import this folder
-        - tcl console: cd your_project_dir
-        - tcl console: source hbm_interface_gen.tcl 
-    2) adjust top.sv to your needs
 
-    3) generate bitstream 
+    1) from the repository root (Vivado 2024.2 in PATH):
+        - make snitch | make cva | make veer    // project in build/<core>/u55_<core>.xpr
+        - make bitgen [CORE=<core>] [JOBS=8]    // build/<core>/u55_<core>.bit, timing and utilization reports
+      the project uses the rtl files listed in build/<core>/<core>.f, regenerated at each make
+
+    2) manual flow (same steps of create_project.tcl):
+        - create a new project with target alveo u55c accelerator
+        - add the rtl sources and hw/cluster/xdma_boot/axi4_boot_check.v
+        - tcl console: source gen_clock.tcl ; source qdma_interface.tcl
+        - add xdc/u55/u55_snitch_const.xdc and generate the bitstream
     
     4) load mcs :
         - look in buil_mcs.tcl and replicate it, you must sobstitute all the paths, and specific numbers (ie board serial) in the file with yuor own before executing.

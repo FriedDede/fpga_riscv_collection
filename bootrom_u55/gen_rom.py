@@ -135,5 +135,6 @@ with open(filename + ".sv", "w") as f:
     f.write(license)
     f.write(timestamp)
     s = Template(module)
-    f.write(s.substitute(filename=filename, size=int(len(rom)/8), content=rom_str))
+    # module named as the file, without its directory
+    f.write(s.substitute(filename=os.path.basename(filename), size=int(len(rom)/8), content=rom_str))
 

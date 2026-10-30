@@ -165,8 +165,102 @@
   assign bus.r_data   = pat``_AXI_0_rdata;     \
   assign bus.r_resp   = pat``_AXI_0_rresp;     \
   assign bus.r_last   = pat``_AXI_0_rlast;     \
-  assign bus.r_user   = pat``_AXI_0_ruser;     
+  assign bus.r_user   = pat``_AXI_0_ruser;
 
+//////////////////////////////////////////////////////////////
+// port connections of one hbm_interface (qdma_interface.tcl) channel, to be used in the
+// hbm_interface port list, e.g.
+//   hbm_interface i_hbm_interface (
+//       `HBM_ASSIGN_CHANNEL(S00, axi_dram[0], 0, clk_cluster),
+//       `HBM_TIE_OFF_CHANNEL(S01, clk_cluster),
+//       ...
+// prefix         = S00 ... S11
+// bus            = AXI_BUS (pulp interface) master, the lower 30 address bits are used
+// address_offset = HBM address bits [33:30], i.e. which 1GB of the 16GB HBM the channel sees
+// clk            = clock of the bus (crossbar of the cluster), axi_clk_cluster_<prefix> port
+// bus.b_user / bus.r_user are not driven by the HBM, assign them outside the instance
+`define HBM_ASSIGN_CHANNEL(prefix, bus, address_offset, clk)               \
+  .axi_clk_cluster_``prefix (clk),                                          \
+  .prefix``_AXI_0_araddr   ({4'(address_offset), bus.ar_addr[29:0]}),       \
+  .prefix``_AXI_0_arburst  (bus.ar_burst),                                  \
+  .prefix``_AXI_0_arcache  (bus.ar_cache),                                  \
+  .prefix``_AXI_0_arid     (bus.ar_id),                                     \
+  .prefix``_AXI_0_arlen    (bus.ar_len),                                    \
+  .prefix``_AXI_0_arlock   (bus.ar_lock),                                   \
+  .prefix``_AXI_0_arprot   (bus.ar_prot),                                   \
+  .prefix``_AXI_0_arqos    (bus.ar_qos),                                    \
+  .prefix``_AXI_0_arready  (bus.ar_ready),                                  \
+  .prefix``_AXI_0_arsize   (bus.ar_size),                                   \
+  .prefix``_AXI_0_arvalid  (bus.ar_valid),                                  \
+  .prefix``_AXI_0_awaddr   ({4'(address_offset), bus.aw_addr[29:0]}),       \
+  .prefix``_AXI_0_awburst  (bus.aw_burst),                                  \
+  .prefix``_AXI_0_awcache  (bus.aw_cache),                                  \
+  .prefix``_AXI_0_awid     (bus.aw_id),                                     \
+  .prefix``_AXI_0_awlen    (bus.aw_len),                                    \
+  .prefix``_AXI_0_awlock   (bus.aw_lock),                                   \
+  .prefix``_AXI_0_awprot   (bus.aw_prot),                                   \
+  .prefix``_AXI_0_awqos    (bus.aw_qos),                                    \
+  .prefix``_AXI_0_awready  (bus.aw_ready),                                  \
+  .prefix``_AXI_0_awsize   (bus.aw_size),                                   \
+  .prefix``_AXI_0_awvalid  (bus.aw_valid),                                  \
+  .prefix``_AXI_0_bid      (bus.b_id),                                      \
+  .prefix``_AXI_0_bready   (bus.b_ready),                                   \
+  .prefix``_AXI_0_bresp    (bus.b_resp),                                    \
+  .prefix``_AXI_0_bvalid   (bus.b_valid),                                   \
+  .prefix``_AXI_0_rdata    (bus.r_data),                                    \
+  .prefix``_AXI_0_rid      (bus.r_id),                                      \
+  .prefix``_AXI_0_rlast    (bus.r_last),                                    \
+  .prefix``_AXI_0_rready   (bus.r_ready),                                   \
+  .prefix``_AXI_0_rresp    (bus.r_resp),                                    \
+  .prefix``_AXI_0_rvalid   (bus.r_valid),                                   \
+  .prefix``_AXI_0_wdata    (bus.w_data),                                    \
+  .prefix``_AXI_0_wlast    (bus.w_last),                                    \
+  .prefix``_AXI_0_wready   (bus.w_ready),                                   \
+  .prefix``_AXI_0_wstrb    (bus.w_strb),                                    \
+  .prefix``_AXI_0_wvalid   (bus.w_valid)
+
+// unused hbm_interface channel: no requests, responses always accepted.
+// clk must be a running clock (e.g. the one of a used channel): the smartconnect of the
+// block design synchronizes its reset in each clock domain
+`define HBM_TIE_OFF_CHANNEL(prefix, clk)   \
+  .axi_clk_cluster_``prefix (clk),          \
+  .prefix``_AXI_0_araddr   ('0),            \
+  .prefix``_AXI_0_arburst  ('0),            \
+  .prefix``_AXI_0_arcache  ('0),            \
+  .prefix``_AXI_0_arid     ('0),            \
+  .prefix``_AXI_0_arlen    ('0),            \
+  .prefix``_AXI_0_arlock   ('0),            \
+  .prefix``_AXI_0_arprot   ('0),            \
+  .prefix``_AXI_0_arqos    ('0),            \
+  .prefix``_AXI_0_arready  (),              \
+  .prefix``_AXI_0_arsize   ('0),            \
+  .prefix``_AXI_0_arvalid  (1'b0),          \
+  .prefix``_AXI_0_awaddr   ('0),            \
+  .prefix``_AXI_0_awburst  ('0),            \
+  .prefix``_AXI_0_awcache  ('0),            \
+  .prefix``_AXI_0_awid     ('0),            \
+  .prefix``_AXI_0_awlen    ('0),            \
+  .prefix``_AXI_0_awlock   ('0),            \
+  .prefix``_AXI_0_awprot   ('0),            \
+  .prefix``_AXI_0_awqos    ('0),            \
+  .prefix``_AXI_0_awready  (),              \
+  .prefix``_AXI_0_awsize   ('0),            \
+  .prefix``_AXI_0_awvalid  (1'b0),          \
+  .prefix``_AXI_0_bid      (),              \
+  .prefix``_AXI_0_bready   (1'b1),          \
+  .prefix``_AXI_0_bresp    (),              \
+  .prefix``_AXI_0_bvalid   (),              \
+  .prefix``_AXI_0_rdata    (),              \
+  .prefix``_AXI_0_rid      (),              \
+  .prefix``_AXI_0_rlast    (),              \
+  .prefix``_AXI_0_rready   (1'b1),          \
+  .prefix``_AXI_0_rresp    (),              \
+  .prefix``_AXI_0_rvalid   (),              \
+  .prefix``_AXI_0_wdata    ('0),            \
+  .prefix``_AXI_0_wlast    (1'b0),          \
+  .prefix``_AXI_0_wready   (),              \
+  .prefix``_AXI_0_wstrb    ('0),            \
+  .prefix``_AXI_0_wvalid   (1'b0)
 
 `endif
 //////////////////////////////////////////////////////////////

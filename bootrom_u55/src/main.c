@@ -6,7 +6,16 @@
 int main()
 {
     uint32_t hartid;
+#ifdef MINI
+    // riscv-mini (privileged spec 1.7): mhartid is csr 0xf10 (0xf14 in newer specs), always 0
+    asm volatile ("csrr %0, 0xf10" : "=r"(hartid));
+#else
     asm volatile ("csrr %0, mhartid" : "=r"(hartid));
+#endif
+#ifdef VEER
+    // VeeR mhartid is {core_id, 4'b0}
+    hartid >>= 4;
+#endif
     if (hartid == 0)
     {
         //init_uart(CORE_CLK,UART_BAUD);

@@ -1,0 +1,540 @@
+
+// Copyright 2024 Politecnico di Milano.
+// Copyright and related rights are licensed under the Solderpad Hardware
+// License, Version 0.51 (the "License"); you may not use this file except in
+// compliance with the License.  You may obtain a copy of the License at
+// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
+// or agreed to in writing, software, hardware and materials distributed under
+// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
+// Description: AMD u55c cva6 hbm cluster top-level
+// Author: Andrea Motta 
+`include "axi_typedef.svh"
+`include "hbm_axi.svh"
+
+module cva6_u55_xilinx_bd 
+    import snitch_pkg::*; 
+    import snitch_cluster_pkg::*;
+    import axi_pkg::*;
+(
+  input                 sys_clk_p       ,   // 100 MHz Clock for PCIE
+  input                 sys_clk_n       ,   // 100 MHz Clock for PCIE
+  input  logic          prst_n          ,   //reset
+  input                 HBM_ref_clk_p   ,   // 100 MHz Clock for HBM
+  input                 HBM_ref_clk_n   ,   // 100 MHz Clock for HBM
+  output wire [15:0]    pcie_x16_txp     ,
+  output wire [15:0]    pcie_x16_txn     ,
+  input  wire [15:0]    pcie_x16_rxp     ,
+  input  wire [15:0]    pcie_x16_rxn     ,
+  input  logic          uart_rx         ,
+  output logic          uart_tx
+);
+
+// design parameter
+localparam BOOT_ADDR            = 64'h0000_0000;
+localparam CORE_NUMBER          = 1;
+localparam CLUSTER_NUMBER       = 1;
+localparam TOTAL_CORE_NUMBER     = CORE_NUMBER * CLUSTER_NUMBER;
+localparam PERIF_NUMBER         = 3;            // uart, timer, plic
+localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER;  // snitch clusters
+
+// axi paramenter
+localparam AxiAddrWidth         = 32;           // 32
+localparam AxiDataWidth         = 64;          // 64
+localparam AxiPerifDataWidth    = 64;           // 64
+localparam AxiIdWidthCore       = 4;            // 4 
+localparam AxiIdWidthToUncore   = AxiIdWidthCore + $clog2(CORE_NUMBER);          // 4
+localparam AxiIdWidthToPerifs   = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
+localparam AxiUserWidth         = 1;
+
+// axi typedef
+typedef logic [AxiAddrWidth-1:0]        addr_t;
+typedef logic [AxiDataWidth-1:0]        data_t;
+typedef logic [AxiDataWidth/8-1:0]      strb_t;
+typedef logic [AxiUserWidth-1:0]        user_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_in_id_t;
+typedef logic [AxiIdWidthCore-1:0]      narrow_out_id_t;
+`AXI_TYPEDEF_ALL(cva6_in, addr_t, narrow_in_id_t, data_t, strb_t, user_t)
+`AXI_TYPEDEF_ALL(cva6_out, addr_t, narrow_out_id_t, data_t, strb_t, user_t)
+
+// xbar config
+localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
+    NoSlvPorts:         CORE_NUMBER,
+    NoMstPorts:         4,          // bootrom + clint + dram + peripherals xbar
+    MaxMstTrans:        16,
+    MaxSlvTrans:        16,
+    FallThrough:        1'b0,
+    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
+    PipelineStages:     1,
+    AxiIdWidthSlvPorts: AxiIdWidthCore,
+    AxiIdUsedSlvPorts:  2,
+    UniqueIds:          '0,
+    AxiAddrWidth:       AxiAddrWidth,
+    AxiDataWidth:       AxiDataWidth,
+    NoAddrRules:        4           // bootrom + clint + dram + peripherals xbar
+};
+// peripherals xbar setting
+localparam axi_pkg::xbar_cfg_t perif_xbar_cfg = '{
+    NoSlvPorts:         CLUSTER_NUMBER,
+    NoMstPorts:         PERIF_NUMBER,
+    MaxMstTrans:        16,
+    MaxSlvTrans:        16,
+    FallThrough:        1'b0,
+    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
+    PipelineStages:     1,
+    AxiIdWidthSlvPorts: AxiIdWidthToUncore,
+    AxiIdUsedSlvPorts:  AxiIdWidthToUncore,
+    UniqueIds:          '0,
+    AxiAddrWidth:       AxiAddrWidth,
+    AxiDataWidth:       AxiPerifDataWidth,
+    NoAddrRules:        PERIF_NUMBER
+};
+
+// generate the address map
+typedef axi_pkg::xbar_rule_32_t  rule_t;
+function rule_t [3:0] addr_map_gen ();
+    // rom address 0x0 -> 0xffff
+    addr_map_gen[0] = rule_t'{
+        idx:        unsigned'(0),
+        start_addr: 32'h0000_0000,
+        end_addr:   32'h0001_0000,
+        default:    '0
+    };
+    // dram address 0x8000000 -> 0x8000000 + clog2(size)
+    addr_map_gen[1] = rule_t'{
+        idx:        unsigned'(1),
+        start_addr: 32'h8000_0000,
+        end_addr:   32'h8000_0000 + 32'h2000_0000, // 512MB per cluster here
+        default:    '0
+    };
+    // Perif (PLIC UART TIMER ... )
+    addr_map_gen[2] = rule_t'{
+        idx:        unsigned'(2),
+        start_addr: 32'h1000_0000,
+        end_addr:   32'h8000_0000,
+        default:    '0
+    };
+    // CLINT (Pulp Specs RISC-V privilege spec 1.11 compatible CLINT )
+    addr_map_gen[3] = rule_t'{
+        idx:        unsigned'(3),
+        start_addr: 32'h0200_0000,
+        end_addr:   32'h0200_C000,
+        default:    '0
+    };
+endfunction
+
+function rule_t [PERIF_NUMBER - 1 : 0] addr_map_perif_gen ();
+    // PLIC
+    addr_map_perif_gen[0] = rule_t'{
+        idx:        unsigned'(0),
+        start_addr: 32'h1000_0000,
+        end_addr:   32'h1400_0000,
+        default:    '0
+    };
+    // Uart
+    addr_map_perif_gen[1] = rule_t'{
+        idx:        unsigned'(1),
+        start_addr: 32'h1400_0000,
+        end_addr:   32'h1400_1000,
+        default:    '0
+    };
+    // Timer
+    addr_map_perif_gen[2] = rule_t'{
+        idx:        unsigned'(2),
+        start_addr: 32'h1400_1000,
+        end_addr:   32'h1400_2000,
+        default:    '0
+    };
+
+endfunction
+
+localparam rule_t [3:0] AddrMapUncore = addr_map_gen();
+localparam rule_t [PERIF_NUMBER - 1 : 0] AddrMapPerif = addr_map_perif_gen();
+AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+    .AXI_DATA_WIDTH ( AxiDataWidth     ),
+    .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
+    .AXI_USER_WIDTH ( AxiUserWidth     )
+) axi_dram[DRAM_CH_NUMBER-1:0]();
+AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
+    .AXI_DATA_WIDTH ( AxiPerifDataWidth  ),
+    .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
+    .AXI_USER_WIDTH ( AxiUserWidth       )
+) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
+AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
+    .AXI_DATA_WIDTH ( AxiPerifDataWidth  ),
+    .AXI_ID_WIDTH   ( AxiIdWidthToPerifs ),
+    .AXI_USER_WIDTH ( AxiUserWidth       )
+) axi_peripherals[PERIF_NUMBER - 1:0]();
+
+// interrupt handling bus
+logic [TOTAL_CORE_NUMBER - 1 : 0][1:0] plic_irq_o;
+
+// clocking and reset declaration: core, cluster (crossbar) and peripheral domains,
+// the core resets are generated inside the <core>_cd_wrapper
+// each cluster has its own clock generator (cluster and core clocks), peripherals have one
+logic [CLUSTER_NUMBER-1:0][CORE_NUMBER-1:0] clk_core;
+logic [CLUSTER_NUMBER-1:0]                  clk_cluster, rst_cluster_n, cluster_locked;
+logic                                       clk_periph, rst_periph_n;
+logic                                       SOC_REF_CLK, clock_reset;
+(* keep = "true" *) logic soc_rst_async_n;
+logic master_areset;
+// ---------------
+// Core
+// ---------------
+    
+    for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin  : cluster_gen
+
+        // cluster clock generator: crossbar clock and one clock per core
+        cluster_clk_gen #(
+            .NumCores      ( CORE_NUMBER       )
+        ) i_cluster_clk_gen (
+            .clk_in1       ( SOC_REF_CLK       ), // 100 Mhz ref clk
+            .reset         ( clock_reset       ),
+            .locked        ( cluster_locked[i] ),
+            .clk_cluster_o ( clk_cluster[i]    ),
+            .clk_core_o    ( clk_core[i]       )
+        );
+        rstgen i_rstgen_cluster (
+            .clk_i        ( clk_cluster[i]     ),
+            .rst_ni       ( soc_rst_async_n    ),
+            .test_mode_i  ( '0                 ),
+            .rst_no       ( rst_cluster_n[i]   ),
+            .init_no      (                    ) // keep open
+        );
+
+        logic [CORE_NUMBER -1 : 0]timer_irq;
+        logic [CORE_NUMBER -1 : 0]ipi;
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthCore   ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_cva2xbar[CORE_NUMBER - 1 : 0]();
+        
+        for ( genvar j=0; j<CORE_NUMBER; ++j) begin  : core_gen
+            // enumeration restarts in each cluster: hart id = core index in the cluster
+            cva6_cd_wrapper #(
+                .AxiAddrWidth   ( AxiAddrWidth   ),
+                .AxiDataWidth   ( AxiDataWidth   ),
+                .AxiUserWidth   ( AxiUserWidth   ),
+                .AxiIdWidth     ( AxiIdWidthCore ),
+                .BootAddr       ( BOOT_ADDR      )
+            ) i_cva6 (
+                .clk_core_i     ( clk_core[i][j]        ),
+                .clk_cluster_i  ( clk_cluster[i]     ),
+                .rst_cluster_ni ( rst_cluster_n[i]   ),
+                .rst_ni         ( soc_rst_async_n ),
+                .hart_id_i      ( j               ),
+                // meip
+                .irq_i          ( '0              ),
+                // msip
+                .ipi_i          ( '0              ),
+                // mtip
+                .time_irq_i     ( '0              ),
+                .debug_req_i    ( '0              ),
+                .noc            ( axi_cva2xbar[j] )
+            );
+
+        end : core_gen
+
+        AXI_BUS #(
+           .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+           .AXI_DATA_WIDTH ( AxiDataWidth     ),
+           .AXI_ID_WIDTH   ( AxiIdWidthToUncore),
+           .AXI_USER_WIDTH ( AxiUserWidth     )
+         ) axi_xbar2uncore[3:0]();
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_rom();
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+            .AXI_DATA_WIDTH ( AxiPerifDataWidth     ),
+            .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
+            .AXI_USER_WIDTH ( AxiUserWidth     )
+        ) axi_clint(); 
+
+        axi_xbar_intf #(
+            .AXI_USER_WIDTH(AxiUserWidth),
+            .Cfg(xbar_cfg),
+            .rule_t(rule_t)
+        ) i_axi_xbar_intf (
+            .clk_i(clk_cluster[i]),
+            .rst_ni(rst_cluster_n[i]),
+            .test_i('0),
+            .slv_ports(axi_cva2xbar),
+            .mst_ports(axi_xbar2uncore),
+            .addr_map_i(AddrMapUncore),
+            .en_default_mst_port_i('0),
+            .default_mst_port_i('0)
+        );
+        
+        // To external peripherals, cluster -> peripheral clock domain
+            axi_cdc_intf #(
+                .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
+                .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
+                .AXI_DATA_WIDTH ( AxiPerifDataWidth ),
+                .AXI_USER_WIDTH ( AxiUserWidth       ),
+                .LOG_DEPTH      ( 2                  )
+            ) i_cdc_perif (
+                .src_clk_i  ( clk_cluster[i]         ),
+                .src_rst_ni ( rst_cluster_n[i]       ),
+                .src        ( axi_xbar2uncore[2]  ),
+                .dst_clk_i  ( clk_periph          ),
+                .dst_rst_ni ( rst_periph_n        ),
+                .dst        ( axi_uncore2pxbar[i] )
+            );
+
+
+        // CLINT
+
+            `AXI_ASSIGN(axi_clint ,axi_xbar2uncore[3])
+
+
+            logic rtc;
+            always_ff @(posedge clk_cluster[i] or negedge rst_cluster_n[i]) begin
+                if (~rst_cluster_n[i]) begin
+                    rtc <= 0;
+                end else begin
+                    rtc <= rtc ^ 1'b1;
+                end
+            end
+            axi_clint #(
+                .AddrWidth(AxiAddrWidth),
+                .DataWidth(AxiPerifDataWidth),
+                .IdWidthIn(AxiIdWidthToUncore),
+                .UserWidth(AxiUserWidth),
+                .NR_CORES(CORE_NUMBER)
+            ) axi_clint_instance(
+                .clk_i(clk_cluster[i]),
+                .rst_ni(rst_cluster_n[i]),
+                .testmode_i('0),
+                .clint(axi_clint),
+                .rtc_i(rtc),
+                .timer_irq_o(timer_irq),
+                .ipi_o(ipi)
+            );
+            //  assign axi_clint.b_user = '0; 
+            //  assign axi_clint.r_user = '0;
+
+        // ROM
+
+            `AXI_ASSIGN(axi_rom ,axi_xbar2uncore[0])
+
+            logic                           rom_req;
+            logic [AxiAddrWidth-1:0]        rom_addr;
+            logic [AxiPerifDataWidth-1:0]   rom_rdata;
+            logic                           rom_rvalid;
+            axi_to_mem_intf #(
+                .ADDR_WIDTH ( AxiAddrWidth),
+                .DATA_WIDTH ( AxiPerifDataWidth),
+                .ID_WIDTH   ( AxiIdWidthToUncore),
+                .USER_WIDTH ( AxiUserWidth),
+                .NUM_BANKS  ( 1)
+            ) i_axi_to_mem (
+                .clk_i       (clk_cluster[i]),
+                .rst_ni      (rst_cluster_n[i]),
+                .busy_o      ( ),
+                .slv         ( axi_rom),
+                .mem_req_o   ( rom_req),
+                .mem_gnt_i   ( '1),
+                .mem_addr_o  ( rom_addr),
+                .mem_wdata_o ( ),
+                .mem_strb_o  ( ),
+                .mem_atop_o  ( ),
+                .mem_we_o    ( ),
+                .mem_rvalid_i( rom_rvalid),
+                .mem_rdata_i ( rom_rdata)
+            );
+            // rv64gc build of bootrom_u55 (make -C bootrom_u55 CORE=cva)
+            bootrom_cva i_bootrom (
+                .clk_i      (clk_cluster[i]),
+                .req_i      ( rom_req   ),
+                .addr_i     ( rom_addr  ),
+                .rdata_o    ( rom_rdata ),
+                .rvalid_o   ( rom_rvalid)
+            );
+        
+        // DRAM
+        `AXI_ASSIGN(axi_dram[i],axi_xbar2uncore[1])
+        // tie unused signal in bram channel to 0
+        assign axi_dram[i].b_user = '0;
+        assign axi_dram[i].r_user = '0;
+    end : cluster_gen
+
+// -----------------------
+// MEMORY SUBSYSTEM
+// -----------------------
+
+    // @ DRAM_BASE b1000_0000_0000_0000_0000_0000_0000_0000 [31:0]
+    // HBM gets    b 000_0000_0000_0000_0000_0000_0000_0000 [30:0]
+    // This allows us to have 31bit addressing (2GB)
+    logic HBM_REF_CLK, sys_clk, sys_clk_gt, sys_rst_n_c;
+   hbm_interface i_hbm_interface (
+        .HBM_REF_CLK_0_0    (HBM_REF_CLK),
+        // one channel per cluster: add `HBM_ASSIGN_CHANNEL(S0<i>, axi_dram[<i>], <i>, clk_cluster[<i>])
+        // for more clusters and remove the corresponding tie off
+        `HBM_ASSIGN_CHANNEL(S00, axi_dram[0], 0, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S01, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S02, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S03, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S04, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S05, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S06, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S07, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S08, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S09, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S10, clk_cluster[0]),
+        `HBM_TIE_OFF_CHANNEL(S11, clk_cluster[0]),
+        .pcie_mgt_0_rxn     (pcie_x16_rxn),
+        .pcie_mgt_0_rxp     (pcie_x16_rxp),
+        .pcie_mgt_0_txn     (pcie_x16_txn),
+        .pcie_mgt_0_txp     (pcie_x16_txp),
+        .sys_clk_0          (sys_clk),
+        .sys_clk_gt_0       (sys_clk_gt),
+        .sys_rst_n_0        (sys_rst_n_c),
+        .usr_irq_req_0      ('0),
+        .master_areset_o_0  (master_areset)
+    );
+
+    // Must manually assign channels to each core dram bus
+    //`AXI_ASSIGN_MASTER_TO_HBM_ARIANE(S00, dram[0])
+    //`AXI_ASSIGN_MASTER_TO_HBM_ARIANE("S01", dram[1])
+    //`AXI_ASSIGN_MASTER_TO_HBM_ARIANE("S02", dram[2])
+    //`AXI_ASSIGN_MASTER_TO_HBM_ARIANE("S03", dram[3])
+    // ... add other channels as needed
+
+// -----------------------
+// ETHERNET SUBSYSTEM
+// -----------------------
+
+// -----------------------
+// PERYPHERALS SUBSYSTEM 
+// -----------------------
+    localparam int EXT_TIMERS = 2; // 2 timers per core
+    logic [(EXT_TIMERS *2) - 1 : 0] ext_timer_irq;
+    logic uart_irq;
+    axi_xbar_intf #(
+        .AXI_USER_WIDTH(AxiUserWidth),
+        .Cfg(perif_xbar_cfg),
+        .rule_t(rule_t)
+    ) i_axi_xbar_intf_perif (
+        .clk_i(clk_periph),
+        .rst_ni(rst_periph_n),
+        .test_i('0),
+        .slv_ports(axi_uncore2pxbar),
+        .mst_ports(axi_peripherals),
+        .addr_map_i(AddrMapPerif),
+        .en_default_mst_port_i('0),
+        .default_mst_port_i('0)
+    );
+    axi_uart #(
+        .AxiAddrWidth(AxiAddrWidth),
+        .AxiDataWidth(AxiPerifDataWidth),
+        .AxiIdWidth(AxiIdWidthToPerifs),
+        .AxiUserWidth(AxiUserWidth)
+    ) axi_uart_instance(
+        .clk_i(clk_periph),
+        .rst_ni(rst_periph_n),
+        .uart(axi_peripherals[1]),
+        .uart_irq(uart_irq),
+        .tx_o(uart_tx),
+        .rx_i(uart_rx)
+    );
+    axi_plic #(
+        .AxiAddrWidth(AxiAddrWidth),
+        .AxiDataWidth(AxiPerifDataWidth),
+        .AxiIdWidth(AxiIdWidthToPerifs),
+        .AxiUserWidth(AxiUserWidth),
+        .NIrqSrcs((EXT_TIMERS *2) + 1), // 2 src per timer per core + uart
+        .NHARTS(TOTAL_CORE_NUMBER)
+    ) axi_plic_instance(
+        .clk_i(clk_periph),
+        .rst_ni(rst_periph_n),
+        .plic(axi_peripherals[0]),
+        .plic_irq_i({uart_irq,ext_timer_irq}),
+        .plic_irq_o(plic_irq_o)
+    );
+    axi_timer #(
+        .AxiAddrWidth(AxiAddrWidth),
+        .AxiDataWidth(AxiPerifDataWidth),
+        .AxiIdWidth(AxiIdWidthToPerifs),
+        .AxiUserWidth(AxiUserWidth),
+        .TimerCount(EXT_TIMERS)
+    ) axi_timer_instance(
+        .clk_i(clk_periph),
+        .rst_ni(rst_periph_n),
+        .timer(axi_peripherals[2]),
+        .timer_irq(ext_timer_irq)
+    );
+
+// -------------------------
+// Clocking system and RESET
+// -------------------------
+    logic REF_CLK, pll_locked;
+    IBUF    sys_reset_n_ibuf (
+        .O(sys_rst_n_c), 
+        .I(prst_n)
+    );
+    IBUFDS  hbm_ref_clk_ibuf (
+        .I(HBM_ref_clk_p), 
+        .IB(HBM_ref_clk_n),
+        .O(REF_CLK)
+    );
+    BUFG    hbm_ref_clk_bufg (
+        .I(REF_CLK), 
+        .O(HBM_REF_CLK)
+    );
+    BUFG    soc_ref_clk_bufg (
+        .I(REF_CLK), 
+        .O(SOC_REF_CLK)
+    );
+
+    // we need to switch reset polarity for core reset
+    assign clock_reset = ~sys_rst_n_c;
+
+    // peripheral clock, the clusters have their own clock generator (cluster_clk_gen):
+    // make FREQ_CORE=<MHz> FREQ_CLUSTER=<MHz> FREQ_PERIPH=<MHz> (default 50)
+    logic periph_locked;
+    xlnx_clk_gen_periph i_clk_gen_periph (
+    .periph_clk  ( clk_periph      ),
+    .reset       ( clock_reset     ),
+    .locked      ( periph_locked   ),
+    .clk_in1     ( SOC_REF_CLK     ) // 100 Mhz ref clk
+    );
+    assign pll_locked = periph_locked & (&cluster_locked);
+
+    IBUFDS_GTE4 #(
+    .REFCLK_HROW_CK_SEL ( 2'b00 )
+    ) IBUFDS_GTE4_inst (
+    .O     ( sys_clk_gt ),
+    .ODIV2 ( sys_clk    ),
+    .CEB   ( 1'b0            ),
+    .I     ( sys_clk_p       ),
+    .IB    ( sys_clk_n       )
+    );
+
+    // the logic is in reset until the pll locks and the board releases his external reset,
+    // then it can be resetted from the hbm_xdma_interface (master_areset).
+    // The reset is asserted asynchronously and released by a rstgen in each clock domain
+    assign soc_rst_async_n = pll_locked & ~master_areset & sys_rst_n_c;
+    rstgen i_rstgen_periph (
+        .clk_i        ( clk_periph               ),
+        .rst_ni       ( soc_rst_async_n          ),
+        .test_mode_i  ( '0                       ),
+        .rst_no       ( rst_periph_n             ),
+        .init_no      (                          ) // keep open
+    );
+
+// -----------------
+// END
+// -----------------
+
+endmodule
