@@ -3,12 +3,45 @@
 
 # RISCV core Cluster
 
-This repository hosts the hardware and software for a RISCV core cluster, developed as part of my master thesis project.
-It is based on the work of the PULP project, a joint effort between ETH Zurich and the University of Bologna.
+This repository hosts the hardware and software for a RISCV core cluster for FPGA targets.
+The repository want also to act as a library of ready to use, wrapped risc-v cores for any other project that may need them.
 
-The platform targets the AMD Alveo U55C: clusters of RISC-V cores (Snitch, CVA6, VeeR-EL2, riscv-mini or VexRiscv) share
-the board HBM with the host, which loads the software payload through PCIe (QDMA) and releases the
-cores from reset.
+The platform targets the AMD Alveo U55C, and is based on PULP project infrastructure.
+Supported cores are:
+- Snitch, [original repo](https://github.com/pulp-platform/snitch_cluster) 
+- CVA6, [original repo](https://github.com/openhwfoundation/cva6)
+- VeeR-EL2,  [original repo](https://github.com/chipsalliance/Cores-VeeR-EL2)
+- riscv-mini [original repo](https://github.com/ucb-bar/riscv-mini)
+- VexRiscv [original repo](https://github.com/SpinalHDL/VexRiscv.git)
+
+Each core is wrapped in a CORE_cd_wrapper, which wraps each core inside an isolated core clock domain, with clock domain converters on the core side and a standard interface with minimal variability across the cores:
+
+    module CORE_cd_wrapper #(
+        parameter int unsigned AxiAddrWidth = 32,
+        parameter int unsigned AxiDataWidth = 64,
+        parameter int unsigned AxiUserWidth = 1,
+        parameter int unsigned AxiIdWidth   = 5,
+        parameter int unsigned CdcLogDepth  = 2
+    )(
+        // core domain clock 
+        input  logic        clk_core_i,
+        input  logic        rst_ni,
+        // outside domain clock
+        input  logic        clk_cluster_i,
+        input  logic        rst_cluster_ni,
+        // HART ID (if supported)
+        input  logic [63:0] hart_id_i,
+        // Interrupts (if needed)       
+        input  logic        timer_irq_i,
+        input  logic        soft_irq_i,
+        input  logic        ext_irq_i,     
+        // axi memory channels
+        AXI_BUS.Master      noc
+    );
+
+The cluster is organized in core complexes as in Figure, each complex has a bootrom and support multiple cores (cores in a complex should have unique HART IDs).
+
+Complexes shares access to the board HBM with the host, which loads the software payload through PCIe (QDMA) and starts the cores.
 
 ![alt text](u55Cluster.drawio.png)
 
