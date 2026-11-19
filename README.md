@@ -94,6 +94,7 @@ Configurations that meet timing on the whole design (setup and hold) after `make
 | riscv-mini | 1      | 1         | 275             | 50                 | Flow_PerfOptimized_high   | Performance_ExtraTimingOpt     |
 | CVA6       | 1      | 1         | 100             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
 | Snitch     | 1      | 1         | 50              | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
+| VexRiscv   | 1      | 1         | 250             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
 
     make mini FREQ_CORE=200 FREQ_CLUSTER=50 FREQ_PERIPH=50 && make bitgen
     make mini FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && \
@@ -102,6 +103,7 @@ Configurations that meet timing on the whole design (setup and hold) after `make
         make bitgen SYNTH_STRATEGY=Flow_PerfOptimized_high IMPL_STRATEGY=Performance_ExtraTimingOpt
     make cva FREQ_CORE=100 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
     make snitch FREQ_CORE=50 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
+    make vex FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
 
 ## Core utilization
 Post implementation utilization of one core with its clock domain wrapper (`hw/cluster/cd_wrappers`:
@@ -111,6 +113,7 @@ core, its memories, the AXI clock domain crossings and the interrupt synchronize
 | Core       | ISA                              | Build (core / cluster MHz) | LUTs   | FFs    | RAMB36 | RAMB18 | DSP | LUTs % |
 |------------|----------------------------------|----------------------------|--------|--------|--------|--------|-----|--------|
 | riscv-mini | RV32I_Zicsr                      | 275 / 50                   | 4731   | 3565   | 0      | 10     | 0   | 0.36   |
+| VexRiscv   | RV32IM_Zicsr                     | 250 / 250                  | 2720   | 3374   | 2      | 9      | 4   | 0.21   |
 | Snitch     | RV32IMAFD_Zicsr                  | 50 / 250                   | 14828  | 9907   | 12     | 0      | 15  | 1.14   |
 | CVA6       | RV64IMAFDC_Zicsr_Zifencei_Zcb    | 125 / 250                  | 31311  | 14680  | 84     | 0      | 27  | 2.40   |
 | VeeR-EL2   | RV32IMC_Zicsr_Zifencei_Zba_Zbb_Zbc_Zbs | 80 / 250             | 37138  | 25308  | 20     | 6      | 4   | 2.85   |
