@@ -71,8 +71,59 @@ The clocks of the three domains (in MHz, default 50) are set when the project is
 - `FREQ_PERIPH`: peripheral crossbar, UART, timer (and PLIC). This should be left to 50 MHz
   (`bootrom_u55/src/platform.h`)
 
+The Vivado strategies of `make bitgen` (default: the Vivado defaults) are set with:
+
+    make bitgen SYNTH_STRATEGY=Flow_PerfOptimized_high IMPL_STRATEGY=Performance_Explore
+
 `make bitgen` leaves the bitstream `build/<core>/u55_<core>.bit` and the timing and utilization
 reports in the same directory.
+
+## Known good configurations
+Configurations that meet timing on the whole design (setup and hold) after `make bitgen`, with
+`FREQ_PERIPH=50`. Core n is `CORE_NUMBER` (cores per cluster), cluster n is `CLUSTER_NUMBER` (tops in
+`hw/cluster/tops`).
+
+| Core       | Core n | Cluster n | Core freq (MHz) | Cluster freq (MHz) | Synth strategy            | Impl strategy                  |
+|------------|--------|-----------|-----------------|--------------------|---------------------------|--------------------------------|
+| riscv-mini | 1      | 1         | 200             | 50                 | Vivado Synthesis Defaults | Vivado Implementation Defaults |
+| riscv-mini | 1      | 1         | 250             | 250                | Flow_PerfOptimized_high   | Performance_Explore            |
+| riscv-mini | 1      | 1         | 275             | 50                 | Flow_PerfOptimized_high   | Performance_ExtraTimingOpt     |
+| CVA6       | 1      | 1         | 100             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
+| Snitch     | 1      | 1         | 50              | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
+
+    make mini FREQ_CORE=200 FREQ_CLUSTER=50 FREQ_PERIPH=50 && make bitgen
+    make mini FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && \
+        make bitgen SYNTH_STRATEGY=Flow_PerfOptimized_high IMPL_STRATEGY=Performance_Explore
+    make mini FREQ_CORE=275 FREQ_CLUSTER=50 FREQ_PERIPH=50 && \
+        make bitgen SYNTH_STRATEGY=Flow_PerfOptimized_high IMPL_STRATEGY=Performance_ExtraTimingOpt
+    make cva FREQ_CORE=100 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
+    make snitch FREQ_CORE=50 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
+
+## Core utilization
+Post implementation utilization of one core with its clock domain wrapper (`hw/cluster/cd_wrappers`:
+core, its memories, the AXI clock domain crossings and the interrupt synchronizers), from
+`build/<core>/utilization.rpt`. The device totals are those of the Alveo U55C (XCU55C).
+
+| Core       | ISA                              | Build (core / cluster MHz) | LUTs   | FFs    | RAMB36 | RAMB18 | DSP | LUTs % |
+|------------|----------------------------------|----------------------------|--------|--------|--------|--------|-----|--------|
+| riscv-mini | RV32I_Zicsr                      | 275 / 50                   | 4731   | 3565   | 0      | 10     | 0   | 0.36   |
+| Snitch     | RV32IMAFD_Zicsr                  | 50 / 250                   | 14828  | 9907   | 12     | 0      | 15  | 1.14   |
+| CVA6       | RV64IMAFDC_Zicsr_Zifencei_Zcb    | 125 / 250                  | 31311  | 14680  | 84     | 0      | 27  | 2.40   |
+| VeeR-EL2   | RV32IMC_Zicsr_Zifencei_Zba_Zbb_Zbc_Zbs | 80 / 250             | 37138  | 25308  | 20     | 6      | 4   | 2.85   |
+| XCU55C     |                                  |                            | 1303680| 2607360| 2016   | 4032   | 9024|        |
+
+ISA as configured in this repository:
+- riscv-mini: privileged spec 1.7 (machine mode, see [hw/README.md](hw/README.md)), no M, A, C
+- Snitch: `snitch_core_axi` with RVF and RVD, M in the shared multiplier/divider, no Snitch
+  extensions (DMA, SSR, FREP, IPU)
+- CVA6: `cv64a6_imafdc_sv39` configuration with M, S and U modes but no MMU (`CVA6ConfigMmuPresent = 0`)
+- VeeR-EL2: `VEER_CONFIG` snapshot, machine mode only (no user mode), 16 PMP entries
+- A (Snitch, CVA6): the cores issue the atomics as AXI atomic operations (`aw_atop`), but the HBM
+  channel ports of the block design have no `aw_atop`: an atomic to the DRAM reaches it as a plain
+  write (an `axi_riscv_atomics` adapter before the HBM channel would be needed)
+
+The rest of a 1x1 design is mostly the QDMA + HBM block design (`hbm_interface`): about 59k LUTs,
+75k FFs, 81 RAMB36, 13 RAMB18 and 5 URAM, the same for every core.
 
 Each run folder (`build/<core>` for a project, `build/sim-<core>` for a simulation) holds the
 sources generated for it, rebuilt when their inputs change:

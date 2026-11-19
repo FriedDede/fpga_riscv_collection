@@ -2,11 +2,11 @@
 	path = sw
 	url = https://github.com/FriedDede/hbm_testing_sw
 
-[submodule "hw/cores/Cores-VeeR-EL2"]
+[submodule "Cores-VeeR-EL2"]
 	path = hw/cores/Cores-VeeR-EL2
 	url = https://github.com/chipsalliance/Cores-VeeR-EL2
 
-[submodule "hw/cores/riscv-mini"]
+[submodule "riscv-mini"]
 	path = hw/cores/riscv-mini
 	url = https://github.com/ucb-bar/riscv-mini
 

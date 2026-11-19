@@ -271,7 +271,7 @@ package fpnew_pkg;
 
 
   // FPU configuraion: implementation
-  localparam int unsigned PIPELINING_STAGES = 'd1;
+  localparam int unsigned PIPELINING_STAGES = 'd3;
   localparam int unsigned LAT_COMP_FP32     = 'd2 + PIPELINING_STAGES;
   localparam int unsigned LAT_COMP_FP64     = 'd3 + PIPELINING_STAGES;
   localparam int unsigned LAT_COMP_FP16     = 'd1 + PIPELINING_STAGES;

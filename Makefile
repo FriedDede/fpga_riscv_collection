@@ -4,6 +4,7 @@
 # Alveo u55c projects
 #   make snitch | cva | veer | mini   create the Vivado project in build/<core> [FREQ_CORE= FREQ_CLUSTER= FREQ_PERIPH=<MHz>, default 50]
 #   make bitgen [CORE=<core>]  synthesis + implementation + bitstream (default: last created project)
+#               [SYNTH_STRATEGY=<name>] [IMPL_STRATEGY=<name>]  Vivado strategies (default: Vivado defaults)
 #   make sim-veer | sim-mini   xcelium simulation of the VeeR / riscv-mini top (sim/<core>)
 #
 # Every run folder (build/<core>, build/sim-<core>) holds its generated sources:
@@ -19,6 +20,9 @@ BUILD_DIR   ?= $(CURDIR)/build
 FREQ_CORE    ?= 50
 FREQ_CLUSTER ?= 50
 FREQ_PERIPH  ?= 50
+# Vivado run strategies for make bitgen, e.g. Flow_PerfOptimized_high / Performance_Explore
+SYNTH_STRATEGY ?=
+IMPL_STRATEGY  ?=
 
 CORE        ?= $(shell cat $(BUILD_DIR)/.core 2>/dev/null)
 
@@ -66,7 +70,7 @@ bitgen:
 	@test -n "$(CORE)" || (echo "no project: run make snitch | cva | veer | mini first" && exit 1)
 	@test -f $(BUILD_DIR)/$(CORE)/u55_$(CORE).xpr || (echo "missing $(BUILD_DIR)/$(CORE)/u55_$(CORE).xpr, run make first" && exit 1)
 	cd $(BUILD_DIR)/$(CORE) && $(VIVADO_BATCH) -log run_impl.log \
-		-source $(CURDIR)/tcl_scripts/run_impl.tcl -tclargs $(BUILD_DIR)/$(CORE)/u55_$(CORE).xpr $(JOBS)
+		-source $(CURDIR)/tcl_scripts/run_impl.tcl -tclargs $(BUILD_DIR)/$(CORE)/u55_$(CORE).xpr $(JOBS) "$(SYNTH_STRATEGY)" "$(IMPL_STRATEGY)"
 
 # -----------------
 # Generated sources of a run: build/<run>/...
@@ -83,10 +87,13 @@ $(BUILD_DIR)/%/veer_snapshot/common_defines.vh: Makefile
 	rm -rf $(dir $@) && mkdir -p $(dir $@)
 	cd $(VEER_ROOT) && RV_ROOT=$(VEER_ROOT) BUILD_PATH=$(dir $@) perl configs/veer.config $(VEER_CONFIG) > $(dir $@)/veer.config.log
 
-# riscv-mini: chisel -> systemverilog with sbt (hw/cores/riscv-mini/Makefile), sbt caches stay in the submodule
+# riscv-mini: chisel -> systemverilog with sbt (hw/cores/riscv-mini/Makefile), sbt caches stay in the submodule.
+# Runs in parallel share the sbt project of the submodule: serialize them with a lock in its
+# (git ignored) target directory
+MINI_SBT_LOCK = $(MINI_ROOT)/target/.sbt.lock
 $(BUILD_DIR)/%/riscv_mini/Tile.sv: $(MINI_SRCS)
-	mkdir -p $(dir $@)
-	$(MAKE) -C $(MINI_ROOT) compile gen_dir=$(dir $@) > $(dir $@)/sbt.log 2>&1 || (tail -20 $(dir $@)/sbt.log; exit 1)
+	mkdir -p $(dir $@) $(dir $(MINI_SBT_LOCK))
+	flock $(MINI_SBT_LOCK) $(MAKE) -C $(MINI_ROOT) compile gen_dir=$(dir $@) > $(dir $@)/sbt.log 2>&1 || (tail -20 $(dir $@)/sbt.log; exit 1)
 
 # -----------------
 # Simulations

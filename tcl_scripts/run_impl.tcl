@@ -2,13 +2,18 @@
 # Solderpad Hardware License, Version 0.51, see LICENSE for details.
 #
 # Description: synthesis, implementation and bitstream of a project made by create_project.tcl
-# Usage: vivado -mode batch -source tcl_scripts/run_impl.tcl -tclargs <project.xpr> <jobs>
+# Usage: vivado -mode batch -source tcl_scripts/run_impl.tcl -tclargs <project.xpr> <jobs> [synth_strategy] [impl_strategy]
+#        strategies: Vivado run strategy names, empty or omitted = keep the project ones (Vivado defaults)
 # Author: Andrea Motta
 
-lassign $argv xpr jobs
+lassign $argv xpr jobs synth_strategy impl_strategy
 open_project $xpr
 set proj_dir [get_property directory [current_project]]
 set proj_name [get_property name [current_project]]
+
+if {$synth_strategy ne ""} { set_property strategy $synth_strategy [get_runs synth_1] }
+if {$impl_strategy ne ""}  { set_property strategy $impl_strategy  [get_runs impl_1] }
+puts "INFO: synthesis strategy [get_property strategy [get_runs synth_1]], implementation strategy [get_property strategy [get_runs impl_1]]"
 
 # rerun from scratch so the bitstream always matches the current sources
 reset_run synth_1
@@ -33,6 +38,7 @@ set wns [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]
 set whs [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -hold]]
 puts "INFO: bitstream $proj_dir/$proj_name.bit"
 puts "INFO: WNS $wns ns, WHS $whs ns (reports in $proj_dir)"
+puts "INFO: strategies [get_property strategy [get_runs synth_1]] / [get_property strategy [get_runs impl_1]]"
 if {$wns < 0 || $whs < 0} {
     puts "CRITICAL WARNING: timing not met"
 }
