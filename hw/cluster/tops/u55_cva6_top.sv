@@ -9,7 +9,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Description: AMD u55c cva6 hbm cluster top-level
+// Description: AMD u55c snitch hbm cluster top-level
 // Author: Andrea Motta 
 `include "axi_typedef.svh"
 `include "hbm_axi.svh"
@@ -24,6 +24,7 @@ module cva6_u55_xilinx_bd
   input  logic          prst_n          ,   //reset
   input                 HBM_ref_clk_p   ,   // 100 MHz Clock for HBM
   input                 HBM_ref_clk_n   ,   // 100 MHz Clock for HBM
+  output                hbm_cattrip,
   output wire [15:0]    pcie_x16_txp     ,
   output wire [15:0]    pcie_x16_txn     ,
   input  wire [15:0]    pcie_x16_rxp     ,
@@ -31,6 +32,13 @@ module cva6_u55_xilinx_bd
   input  logic          uart_rx         ,
   output logic          uart_tx
 );
+
+// Fix the CATTRIP issue for AU280, AU50, AU55C and AU55N custom flow
+//
+// This pin must be tied to 0; otherwise the board might be unrecoverable
+// after programming
+// Connect QSFP control lines through to the CMS for AU200 and AU250
+OBUF hbm_cattrip_obuf_inst (.I(1'b0), .O(hbm_cattrip));
 
 // design parameter
 localparam BOOT_ADDR            = 64'h0000_0000;

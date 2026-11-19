@@ -1,4 +1,4 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2024 Politecnico di Milano.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -8,8 +8,8 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Description: Xilinx FPGA top-level
-// Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
+// Description: AMD u55c snitch hbm cluster top-level
+// Author: Andrea Motta 
 `include "axi_typedef.svh"
 `include "hbm_axi.svh"
 
@@ -26,7 +26,6 @@ module cva6_u55_sim (
     input  logic          uart_rx         ,
     output logic          uart_tx
 );
-
 
 // design parameter
 localparam BOOT_ADDR            = 64'h0000_0000;
