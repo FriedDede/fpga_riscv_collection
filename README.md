@@ -1,7 +1,7 @@
 ![CI](https://github.com/pulp-platform/snitch_cluster/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-# RISCV core Cluster
+# OPEN RISCV Cluster and core collection
 
 This repository hosts the hardware and software for a RISCV core cluster for FPGA targets.
 The repository want also to act as a library of ready to use, wrapped risc-v cores for any other project that may need them.
