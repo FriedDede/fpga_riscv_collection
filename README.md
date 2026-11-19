@@ -28,7 +28,8 @@ All the hardware of the compute platform, see [hw/README.md](hw/README.md):
 - `hw/infra`: AXI, APB and register interfaces, common cells and peripherals from the PULP project
 
 ## sim
-Xcelium testbenches of the VeeR-EL2 (`sim/veer`) and riscv-mini (`sim/mini`) tops: the FPGA top is
+Xcelium testbenches of the Snitch (`sim/snitch`), CVA6 (`sim/cva6`), VeeR-EL2 (`sim/veer`) and
+riscv-mini (`sim/mini`) tops: the FPGA top is
 simulated as is, with models of the HBM/QDMA block design and of the clock wizards (`sim/models`),
 and boots a test payload from DRAM.
 
@@ -58,6 +59,8 @@ Every output goes in `build/` (`BUILD_DIR=<dir>` to change it):
 
     make snitch | cva | veer | mini       # Vivado project in build/<core>/u55_<core>.xpr
     make bitgen [CORE=<core>] [JOBS=8]    # synthesis, implementation and bitstream of the last (or given) project
+    make sim-snitch                       # Snitch boot test in xcelium (bootrom -> DRAM payload, mul/div, fpu lsu port)
+    make sim-cva6                         # CVA6 boot test in xcelium (bootrom -> DRAM payload, fpu, I$/D$ refills)
     make sim-veer                         # VeeR boot test in xcelium (bootrom -> DRAM payload, DCCM stack, DMA port, I$)
     make sim-mini                         # riscv-mini boot test in xcelium (bootrom -> DRAM payload, D$ write-back)
     make clean                            # remove build/

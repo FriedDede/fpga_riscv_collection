@@ -31,7 +31,7 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigAxiIdWidth = 4;
   localparam CVA6ConfigAxiAddrWidth = 32;
-  localparam CVA6ConfigAxiDataWidth = 256;
+  localparam CVA6ConfigAxiDataWidth = 64;  // must match AxiDataWidth of hw/cluster/tops/u55_cva6_top.sv
   localparam CVA6ConfigFetchUserEn = 0;
   localparam CVA6ConfigFetchUserWidth = CVA6ConfigXlen;
   localparam CVA6ConfigDataUserEn = 0;

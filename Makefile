@@ -5,7 +5,7 @@
 #   make snitch | cva | veer | mini   create the Vivado project in build/<core> [FREQ_CORE= FREQ_CLUSTER= FREQ_PERIPH=<MHz>, default 50]
 #   make bitgen [CORE=<core>]  synthesis + implementation + bitstream (default: last created project)
 #               [SYNTH_STRATEGY=<name>] [IMPL_STRATEGY=<name>]  Vivado strategies (default: Vivado defaults)
-#   make sim-veer | sim-mini   xcelium simulation of the VeeR / riscv-mini top (sim/<core>)
+#   make sim-snitch | sim-cva6 | sim-veer | sim-mini   xcelium simulation of a top (sim/<core>)
 #
 # Every run folder (build/<core>, build/sim-<core>) holds its generated sources:
 #   bootrom/       bootrom_<core>.elf/.bin/.img/.dump/.sv (bootrom_u55)
@@ -43,12 +43,12 @@ BOOTROM_mini   = mini
 GEN_veer       = veer_snapshot/common_defines.vh
 GEN_mini       = riscv_mini/Tile.sv
 
-.PHONY: all snitch cva veer mini bitgen sim-veer sim-mini clean
+.PHONY: all snitch cva veer mini bitgen sim-snitch sim-cva6 sim-veer sim-mini clean
 # the generated sources are built by pattern rules: never delete them as intermediate files
 .SECONDARY:
 
 all:
-	@echo "usage: make snitch | cva | veer | mini | bitgen [CORE=snitch|cva6|veer|mini] | sim-veer | sim-mini | clean"
+	@echo "usage: make snitch | cva | veer | mini | bitgen [CORE=snitch|cva6|veer|mini] | sim-snitch | sim-cva6 | sim-veer | sim-mini | clean"
 
 # -----------------
 # Vivado projects
@@ -98,6 +98,12 @@ $(BUILD_DIR)/%/riscv_mini/Tile.sv: $(MINI_SRCS)
 # -----------------
 # Simulations
 # -----------------
+sim-snitch: $(BUILD_DIR)/sim-snitch/bootrom/bootrom_snitch.sv
+	$(MAKE) -C sim/snitch BUILD_DIR=$(BUILD_DIR)/sim-snitch BOOTROM=$<
+
+sim-cva6: $(BUILD_DIR)/sim-cva6/bootrom/bootrom_cva.sv
+	$(MAKE) -C sim/cva6 BUILD_DIR=$(BUILD_DIR)/sim-cva6 BOOTROM=$<
+
 sim-veer: $(BUILD_DIR)/sim-veer/bootrom/bootrom_veer.sv $(BUILD_DIR)/sim-veer/veer_snapshot/common_defines.vh
 	$(MAKE) -C sim/veer BUILD_DIR=$(BUILD_DIR)/sim-veer BOOTROM=$< VEER_SNAPSHOT=$(BUILD_DIR)/sim-veer/veer_snapshot
 

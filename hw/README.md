@@ -20,7 +20,7 @@ so a new file in these folders is picked up as soon as it is instantiated.
 | `tops/u55_cva6_top.sv`       | CVA6 top (`cva6_u55_xilinx_bd`) |
 | `tops/u55_VeeR_top.sv`       | VeeR-EL2 top (`veer_u55_xilinx_bd`) |
 | `tops/u55_mini_top.sv`       | riscv-mini top (`mini_u55_xilinx_bd`) |
-| `tops/*_sim.sv`, `tb_*.sv`   | older simulation tops, not used by the build flow |
+| `tops/*_sim.sv`              | older simulation tops, not used by the build flow (testbenches are in `sim/`) |
 | `cd_wrappers/<core>_cd_wrapper.sv` | each core in its own clock domain (see below) |
 | `cd_wrappers/cluster_clk_gen.sv`   | clock generator of a cluster: crossbar clock + one clock per core |
 | `cd_wrappers/veer_fpga_mem.sv`, `veer_fpga_sram.sv` | VeeR DCCM / I$ (/ ICCM) memories as BRAM |
