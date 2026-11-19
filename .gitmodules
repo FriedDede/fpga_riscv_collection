@@ -3,9 +3,12 @@
 	url = https://github.com/FriedDede/hbm_testing_sw
 
 [submodule "Cores-VeeR-EL2"]
-	path = hw/cores/Cores-VeeR-EL2
+	path = hw/cores/veer/Cores-VeeR-EL2
 	url = https://github.com/chipsalliance/Cores-VeeR-EL2
 
 [submodule "riscv-mini"]
 	path = hw/cores/riscv-mini
 	url = https://github.com/ucb-bar/riscv-mini
+[submodule "VexRiscv"]
+	path = hw/cores/vex/VexRiscv
+	url = https://github.com/SpinalHDL/VexRiscv.git

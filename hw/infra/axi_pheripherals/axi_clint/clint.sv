@@ -45,6 +45,7 @@ module clint #(
     logic                      en;
     logic                      we;
     logic [63:0] wdata;
+    logic [7:0]  wbe;     // byte enables: 32 bit cores write the 64 bit registers in two halves
     logic [63:0] rdata;
 
     // bit 11 and 10 are determining the address offset
@@ -75,8 +76,16 @@ module clint #(
         .en_o       ( en         ),
         .we_o       ( we         ),
         .data_i     ( rdata      ),
-        .data_o     ( wdata      )
+        .data_o     ( wdata      ),
+        .be_o       ( wbe        )
     );
+
+    // write the enabled bytes of wdata into reg
+    function automatic logic [63:0] merge_bytes(logic [63:0] reg_q, logic [63:0] data, logic [7:0] be);
+        merge_bytes = reg_q;
+        for (int b = 0; b < 8; b++)
+            if (be[b]) merge_bytes[8*b +: 8] = data[8*b +: 8];
+    endfunction
 
     // -----------------------------
     // Register Update Logic
@@ -94,15 +103,17 @@ module clint #(
         if (en && we) begin
             case (register_address) inside
                 [MSIP_BASE:MSIP_BASE+4*NR_CORES]: begin
-                    msip_n[$unsigned(address[AddrSelWidth-1+2:2])] = wdata[32*address[2]];
+                    if (wbe[4*address[2]])
+                        msip_n[$unsigned(address[AddrSelWidth-1+2:2])] = wdata[32*address[2]];
                 end
 
                 [MTIMECMP_BASE:MTIMECMP_BASE+8*NR_CORES]: begin
-                    mtimecmp_n[$unsigned(address[AddrSelWidth-1+3:3])] = wdata;
+                    mtimecmp_n[$unsigned(address[AddrSelWidth-1+3:3])] =
+                        merge_bytes(mtimecmp_q[$unsigned(address[AddrSelWidth-1+3:3])], wdata, wbe);
                 end
 
                 MTIME_BASE: begin
-                    mtime_n = wdata;
+                    mtime_n = merge_bytes(mtime_q, wdata, wbe);
                 end
                 default:;
             endcase

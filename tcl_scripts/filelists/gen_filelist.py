@@ -12,9 +12,9 @@
 #                // sources          rtl sources in compile order
 #                <file>
 #              Paths are relative to the repo root, except the build outputs of the run (bootrom,
-#              VeeR snapshot, riscv-mini Tile): they are emitted as given, use absolute paths.
+#              VeeR snapshot, riscv-mini Tile, VexRiscv): they are emitted as given, use absolute paths.
 # Usage: gen_filelist.py <core> --bootrom <bootrom_<core>.sv> [--veer-snapshot <dir>]
-#                        [--mini-rtl <Tile.sv>] > <core>.f
+#                        [--mini-rtl <Tile.sv>] [--vex-rtl <VexRiscvU55.v>] > <core>.f
 # Author: Andrea Motta
 
 import os
@@ -29,6 +29,8 @@ COMMON_ROOTS = ['hw']
 EXCLUDE = ['Cores-VeeR-EL2/testbench', 'Cores-VeeR-EL2/verification', 'Cores-VeeR-EL2/tools',
            'Cores-VeeR-EL2/third_party', 'Cores-VeeR-EL2/configs', 'Cores-VeeR-EL2/docs',
            'Cores-VeeR-EL2/design/lib/mem_lib.sv',
+           # VexRiscv sources are SpinalHDL: the core is generated in the build directory
+           'cores/vex/VexRiscv/',
            '/test/', '/tb/', '/tb_', 'tb_', '_tb.', 'deprecated', 'fpnew/src/fpu_div_sqrt_mvp',
            'dmi_bscane_tap', 'formal', 'axi_test', '_intf_test', 'axi_sim_mem', 'axi_dumper',
            '/util/', '/doc/', '_sim.sv', 'hw/cluster/tops/',
@@ -63,6 +65,13 @@ CORES = {
         'incdirs': [],
         # riscv-mini Tile, generated from chisel in the build directory
         'extra': ['{mini_rtl}', '{bootrom}'],
+    },
+    'vex': {
+        'top': 'hw/cluster/tops/u55_vex_top.sv',
+        'globals': ['hw/infra/axi_pulp/include/axi/axi_assign.svh'],
+        'incdirs': [],
+        # VexRiscvU55, generated from SpinalHDL in the build directory
+        'extra': ['{vex_rtl}', '{bootrom}'],
     },
 }
 # modules provided by Vivado (IPs, block designs, unisim primitives)
@@ -126,15 +135,18 @@ def resolve_include(name, src, headers):
     return None
 
 
-def main(core, bootrom, veer_snapshot, mini_rtl):
-    # build outputs of the run: bootrom, VeeR snapshot (veer.config), riscv-mini Tile (chisel)
-    fmt = {'bootrom': bootrom, 'veer_snapshot': veer_snapshot, 'mini_rtl': mini_rtl}
+def main(core, bootrom, veer_snapshot, mini_rtl, vex_rtl):
+    # build outputs of the run: bootrom, VeeR snapshot (veer.config), riscv-mini Tile (chisel),
+    # VexRiscv (SpinalHDL)
+    fmt = {'bootrom': bootrom, 'veer_snapshot': veer_snapshot, 'mini_rtl': mini_rtl, 'vex_rtl': vex_rtl}
     cfg = {k: ([x.format(**fmt) for x in v] if isinstance(v, list) else v.format(**fmt))
            for k, v in CORES[core].items()}
     if core == 'veer' and not os.path.isfile(os.path.join(REPO, veer_snapshot, 'common_defines.vh')):
         sys.exit(f'error: no VeeR snapshot in {veer_snapshot}')
     if core == 'mini' and not os.path.isfile(os.path.join(REPO, mini_rtl)):
         sys.exit(f'error: no riscv-mini rtl {mini_rtl}')
+    if core == 'vex' and not os.path.isfile(os.path.join(REPO, vex_rtl)):
+        sys.exit(f'error: no VexRiscv rtl {vex_rtl}')
     if not os.path.isfile(os.path.join(REPO, bootrom)):
         sys.exit(f'error: no bootrom {bootrom}')
     sources, headers = scan()
@@ -204,5 +216,7 @@ if __name__ == '__main__':
                     help='VeeR-EL2 snapshot directory of the run, absolute or relative to the repo')
     ap.add_argument('--mini-rtl', default='build/mini/riscv_mini/Tile.sv',
                     help='riscv-mini Tile.sv of the run, absolute or relative to the repo')
+    ap.add_argument('--vex-rtl', default='build/vex/vexriscv/VexRiscvU55.v',
+                    help='VexRiscvU55.v of the run, absolute or relative to the repo')
     args = ap.parse_args()
-    main(args.core, args.bootrom, args.veer_snapshot, args.mini_rtl)
+    main(args.core, args.bootrom, args.veer_snapshot, args.mini_rtl, args.vex_rtl)

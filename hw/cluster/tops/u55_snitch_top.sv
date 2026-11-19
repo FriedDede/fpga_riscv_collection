@@ -54,7 +54,7 @@ localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
     LatencyMode:        axi_pkg::CUT_ALL_PORTS,
     PipelineStages:     1,
     AxiIdWidthSlvPorts: AxiIdWidthCore,
-    AxiIdUsedSlvPorts:  2,
+    AxiIdUsedSlvPorts:  AxiIdWidthCore,   // <= the id width of the slave ports
     UniqueIds:          '0,
     AxiAddrWidth:       AxiAddrWidth,
     AxiDataWidth:       AxiDataWidth,

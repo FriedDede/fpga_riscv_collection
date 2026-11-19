@@ -24,8 +24,8 @@ _prog_start:
   csrw 0x7c0, t0
 // initliaze stack pointer at dccm end (VeeR has no fpu)
   li sp, VEER_DCCM_BASE + VEER_DCCM_SIZE
-#elif defined(MINI)
-// riscv-mini: rv32i, no fpu, stack at dram end (through the write-back D$)
+#elif defined(MINI) || defined(VEX)
+// riscv-mini (rv32i) and VexRiscv (rv32im): no fpu, stack at dram end
   li sp, DRAM_BASE + DRAM_SIZE
 #else
 // initialize fpu

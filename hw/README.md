@@ -20,6 +20,7 @@ so a new file in these folders is picked up as soon as it is instantiated.
 | `tops/u55_cva6_top.sv`       | CVA6 top (`cva6_u55_xilinx_bd`) |
 | `tops/u55_VeeR_top.sv`       | VeeR-EL2 top (`veer_u55_xilinx_bd`) |
 | `tops/u55_mini_top.sv`       | riscv-mini top (`mini_u55_xilinx_bd`) |
+| `tops/u55_vex_top.sv`        | VexRiscv top (`vex_u55_xilinx_bd`) |
 | `tops/*_sim.sv`              | older simulation tops, not used by the build flow (testbenches are in `sim/`) |
 | `cd_wrappers/<core>_cd_wrapper.sv` | each core in its own clock domain (see below) |
 | `cd_wrappers/cluster_clk_gen.sv`   | clock generator of a cluster: crossbar clock + one clock per core |
@@ -34,6 +35,8 @@ so a new file in these folders is picked up as soon as it is instantiated.
 | `cva6/`           | CVA6 (`cva6_config_pkg`: rv64, 32 bit AXI address, write through cache) |
 | `fpnew/`          | FPU of Snitch and CVA6 |
 | `riscv-mini/`     | riscv-mini (RV32I, Chisel), git submodule of [ucb-bar/riscv-mini](https://github.com/ucb-bar/riscv-mini). Its `Tile.sv` is generated in the run folder (`build/<run>/riscv_mini`) by the Makefile (sbt) |
+| `vex/VexRiscv/`   | VexRiscv (SpinalHDL), git submodule of [SpinalHDL/VexRiscv](https://github.com/SpinalHDL/VexRiscv). `VexRiscvU55.v` is generated in the run folder (`build/<run>/vexriscv`) by the Makefile (sbt) |
+| `vex/GenVexRiscvU55.scala` | the VexRiscv configuration of the u55c tops, compiled with the VexRiscv sources (not copied in the submodule) |
 | `Cores-VeeR-EL2/` | VeeR-EL2, git submodule of [chipsalliance/Cores-VeeR-EL2](https://github.com/chipsalliance/Cores-VeeR-EL2). Its configuration (snapshot) is generated in the run folder (`build/<run>/veer_snapshot`) from `VEER_CONFIG` in the Makefile |
 
 ## infra
@@ -91,7 +94,7 @@ The tops connect the clusters to the `hbm_interface` block design with the macro
 
 # Memory maps
 
-## Snitch, CVA6 and riscv-mini
+## Snitch, CVA6, riscv-mini and VexRiscv
 | Range                     | Target |
 |---------------------------|--------|
 | 0x0000_0000 - 0x0000_FFFF | bootrom |
@@ -100,6 +103,9 @@ The tops connect the clusters to the `hbm_interface` block design with the macro
 | 0x1400_0000 - 0x1400_0FFF | UART |
 | 0x1400_1000 - 0x1400_1FFF | timer |
 | 0x8000_0000 - 0x9FFF_FFFF | DRAM (HBM channel of the cluster) |
+
+The CLINT (`infra/axi_pheripherals/axi_clint`) honours the AXI write strobes: the 32 bit cores
+write `mtimecmp` / `mtime` in two halves (low/high word at +0 / +4) without clobbering the other one.
 
 ## VeeR-EL2
 | Range                     | Target |
@@ -127,3 +133,24 @@ machine mode trap vector at 0x1c0, `mhartid` is csr 0xf10 and always 0 (one core
 PLIC are not connected to the core) and its I$ and D$ (4KB, direct mapped) have no uncached path:
 the D$ is write-back, so stores to the peripherals and to the DRAM shared with the host reach
 the bus only when the line is evicted.
+
+## VexRiscv notes
+`GenVexRiscvU55.scala` is the upstream `GenFullNoMmuMaxPerf` configuration (RV32IM, 8 KiB direct
+mapped I$ with `DYNAMIC_TARGET` branch prediction, 8 KiB direct mapped write-through D$, 32 byte lines,
+full bypassing, no MMU) with these changes:
+- reset vector 0x0 (`IBusCachedPlugin`; the `PcManagerSimplePlugin` of the upstream file is an empty
+  legacy plugin)
+- everything below the DRAM (bootrom, CLINT, peripherals) is uncached (`StaticMemoryTranslatorPlugin`)
+- CSRs: `CsrPluginConfig.small` plus writable `mtvec`, `mhartid` from the `hartId` port (core index
+  in the cluster), `ecall` / `ebreak`, illegal CSR traps, read only `mcycle` / `minstret`;
+  machine mode only
+- no `DebugPlugin` (no debug module in the clusters)
+- 4 KiB I$ (8 KiB upstream)
+- 64 bit cache memory interface (32 bit upstream): a 32 byte line refill takes 4 beats
+- AXI4 masters `iBusAxi` (read only) and `dBusAxi`, 64 bit as the cluster bus (no width converter
+  in `vex_cd_wrapper`)
+- the memories (register file, caches, branch history) are initialized to zero in the generated
+  Verilog: X in the uninitialized branch history corrupts the pipeline flushes in RTL simulation
+  (on the FPGA the RAMs power up at zero)
+
+Interrupts: CLINT timer (`mtip`) and software (`msip`), PLIC context 0 of the hart (`meip`).

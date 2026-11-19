@@ -6,7 +6,7 @@
 This repository hosts the hardware and software for a RISCV core cluster, developed as part of my master thesis project.
 It is based on the work of the PULP project, a joint effort between ETH Zurich and the University of Bologna.
 
-The platform targets the AMD Alveo U55C: clusters of RISC-V cores (Snitch, CVA6, VeeR-EL2 or riscv-mini) share
+The platform targets the AMD Alveo U55C: clusters of RISC-V cores (Snitch, CVA6, VeeR-EL2, riscv-mini or VexRiscv) share
 the board HBM with the host, which loads the software payload through PCIe (QDMA) and releases the
 cores from reset.
 
@@ -18,18 +18,18 @@ cores from reset.
 Initialization code for the riscv cores, compiled into an rtl bootrom, and its compile scripts.
 `make -C bootrom_u55 CORE=<core> BUILD_DIR=<dir> all` builds `bootrom_<core>.elf/.bin/.img/.dump/.sv`
 (module `bootrom_<core>`) in `<dir>`: `snitch` (rv32g), `cva` (rv64gc), `veer` (rv32imc, stack in
-the DCCM), `mini` (rv32i, code at the reset pc 0x200). The top Makefile builds the bootrom of each
+the DCCM), `mini` (rv32i, code at the reset pc 0x200), `vex` (rv32im). The top Makefile builds the bootrom of each
 run in its folder, nothing is generated in `bootrom_u55`.
 
 ## hw
 All the hardware of the compute platform, see [hw/README.md](hw/README.md):
 - `hw/cluster`: the FPGA tops, the clock domain wrappers of the cores and the boot reset logic
-- `hw/cores`: the cores (Snitch, CVA6, VeeR-EL2 and riscv-mini as git submodules) and the FPU
+- `hw/cores`: the cores (Snitch, CVA6, VeeR-EL2, riscv-mini and VexRiscv as git submodules) and the FPU
 - `hw/infra`: AXI, APB and register interfaces, common cells and peripherals from the PULP project
 
 ## sim
-Xcelium testbenches of the Snitch (`sim/snitch`), CVA6 (`sim/cva6`), VeeR-EL2 (`sim/veer`) and
-riscv-mini (`sim/mini`) tops: the FPGA top is
+Xcelium testbenches of the Snitch (`sim/snitch`), CVA6 (`sim/cva6`), VeeR-EL2 (`sim/veer`),
+riscv-mini (`sim/mini`) and VexRiscv (`sim/vex`) tops: the FPGA top is
 simulated as is, with models of the HBM/QDMA block design and of the clock wizards (`sim/models`),
 and boots a test payload from DRAM.
 
@@ -49,7 +49,7 @@ crossing constraints (`xdc/u55/u55_clock_domains.tcl`).
 
 # Build
 Requires Vivado 2024.2 (with the Alveo U55C board files), the riscv gcc toolchain
-(`riscv64-unknown-elf-`), for riscv-mini sbt and a JDK (11 or newer, the Chisel to SystemVerilog
+(`riscv64-unknown-elf-`), for riscv-mini and VexRiscv sbt and a JDK (11 or newer, the Chisel / SpinalHDL to Verilog
 generation downloads its dependencies on the first run) and, for simulation, Xcelium.
 Fetch the submodules first:
 
@@ -57,12 +57,13 @@ Fetch the submodules first:
 
 Every output goes in `build/` (`BUILD_DIR=<dir>` to change it):
 
-    make snitch | cva | veer | mini       # Vivado project in build/<core>/u55_<core>.xpr
+    make snitch | cva | veer | mini | vex # Vivado project in build/<core>/u55_<core>.xpr
     make bitgen [CORE=<core>] [JOBS=8]    # synthesis, implementation and bitstream of the last (or given) project
     make sim-snitch                       # Snitch boot test in xcelium (bootrom -> DRAM payload, mul/div, fpu lsu port)
     make sim-cva6                         # CVA6 boot test in xcelium (bootrom -> DRAM payload, fpu, I$/D$ refills)
     make sim-veer                         # VeeR boot test in xcelium (bootrom -> DRAM payload, DCCM stack, DMA port, I$)
     make sim-mini                         # riscv-mini boot test in xcelium (bootrom -> DRAM payload, D$ write-back)
+    make sim-vex                          # VexRiscv boot test in xcelium (bootrom -> DRAM payload, I$/D$, ecall, CLINT irqs)
     make clean                            # remove build/
 
 The clocks of the three domains (in MHz, default 50) are set when the project is created:
@@ -121,6 +122,8 @@ ISA as configured in this repository:
   extensions (DMA, SSR, FREP, IPU)
 - CVA6: `cv64a6_imafdc_sv39` configuration with M, S and U modes but no MMU (`CVA6ConfigMmuPresent = 0`)
 - VeeR-EL2: `VEER_CONFIG` snapshot, machine mode only (no user mode), 16 PMP entries
+- VexRiscv: GenFullNoMmuMaxPerf (RV32IM, 4 KiB I$ with dynamic target branch prediction, 8 KiB
+  write-through D$, 64 bit cache memory interface, no MMU), machine mode only, see [hw/README.md](hw/README.md)
 - A (Snitch, CVA6): the cores issue the atomics as AXI atomic operations (`aw_atop`), but the HBM
   channel ports of the block design have no `aw_atop`: an atomic to the DRAM reaches it as a plain
   write (an `axi_riscv_atomics` adapter before the HBM channel would be needed)
@@ -133,3 +136,4 @@ sources generated for it, rebuilt when their inputs change:
 - `bootrom/`: `bootrom_<core>.elf/.bin/.img/.dump/.sv`
 - `veer_snapshot/`: VeeR-EL2 configuration, from `VEER_CONFIG` in the Makefile (VeeR runs)
 - `riscv_mini/`: riscv-mini `Tile.sv`, from its Chisel sources with sbt (riscv-mini runs)
+- `vexriscv/`: `VexRiscvU55.v`, from the VexRiscv SpinalHDL sources with sbt (VexRiscv runs)

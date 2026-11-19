@@ -2,7 +2,7 @@ CROSSCOMPILE ?= riscv64-unknown-elf-
 CC 			= ${CROSSCOMPILE}gcc
 PYTHON		=python3
 
-# target core: snitch (default), cva, veer, mini
+# target core: snitch (default), cva, veer, mini, vex
 CORE		?= snitch
 # outputs (objects, bootrom_<core>.elf/.bin/.img/.dump/.sv), the top Makefile uses build/bootrom
 BUILD_DIR	?= $(abspath ../build/bootrom)
@@ -18,6 +18,9 @@ else ifeq ($(CORE),mini)
  CFLAGS	 = -Os -ggdb -march=rv32i_zicsr -mabi=ilp32 -Wall -DMINI
  LDSCRIPT	= linker_mini.lds
  LDLIBS		= -lgcc
+else ifeq ($(CORE),vex)
+# VexRiscv: rv32im, no fpu, no atomics, no compressed
+ CFLAGS	 = -Os -ggdb -march=rv32im_zicsr -mabi=ilp32 -Wall -DVEX
 else ifeq ($(CORE),cva)
 # cva6 (ariane)
  CFLAGS 	= -Os -ggdb -march=rv64gc -mabi=lp64d -Wall
@@ -25,7 +28,7 @@ else ifeq ($(CORE),snitch)
 # snitch
  CFLAGS	 = -Os -ggdb -march=rv32g -mabi=ilp32d -Wall
 else
- $(error unknown CORE=$(CORE), expected snitch, cva, veer or mini)
+ $(error unknown CORE=$(CORE), expected snitch, cva, veer, mini or vex)
 endif
 
 CCASFLAGS 	= -mcmodel=medany -mexplicit-relocs
