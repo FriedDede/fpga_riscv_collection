@@ -40,8 +40,7 @@ CORES = {
         'top': 'hw/cluster/tops/u55_snitch_top.sv',
         'globals': ['hw/infra/axi_pulp/include/axi/axi_assign.svh'],
         'incdirs': [],
-        # snitch_core_axi uses snitch_l0_tlb_tb_pkg::l0_pte_t
-        'extra': ['hw/cores/snitch/snitch/test/snitch_l0_tlb_tb.sv', '{bootrom}'],
+        'extra': ['{bootrom}'],
     },
     'cva6': {
         'top': 'hw/cluster/tops/u55_cva6_top.sv',

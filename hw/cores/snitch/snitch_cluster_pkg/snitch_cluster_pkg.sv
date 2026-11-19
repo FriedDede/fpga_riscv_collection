@@ -17,7 +17,7 @@ package snitch_cluster_pkg;
   localparam int unsigned NarrowDataWidth = 64;
   localparam int unsigned WideDataWidth = 64;
 
-  localparam int unsigned NarrowIdWidthIn = 4;
+  localparam int unsigned NarrowIdWidthIn = 1;
   localparam int unsigned NrMasters = 2;
   localparam int unsigned NarrowIdWidthOut = NarrowIdWidthIn;
 

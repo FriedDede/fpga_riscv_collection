@@ -262,6 +262,113 @@
   .prefix``_AXI_0_wstrb    ('0),            \
   .prefix``_AXI_0_wvalid   (1'b0)
 
+
+// assign an axi req resp pair to flat ports named <pat>_<signal>
+`define AXI_ASSIGN_FLAT(pat, req, rsp) \
+  assign ``pat``_awvalid  = req.aw_valid       ;  \
+  assign ``pat``_awid     = req.aw.id          ;  \
+  assign ``pat``_awaddr   = {4'b00000, req.aw.addr[29:0]}  ;  \
+  assign ``pat``_awlen    = req.aw.len         ;  \
+  assign ``pat``_awsize   = req.aw.size        ;  \
+  assign ``pat``_awburst  = req.aw.burst       ;  \
+  assign ``pat``_awlock   = req.aw.lock        ;  \
+  assign ``pat``_awcache  = req.aw.cache       ;  \
+  assign ``pat``_awprot   = req.aw.prot        ;  \
+  assign ``pat``_awqos    = req.aw.qos         ;  \
+//assign ``pat``_awregion = req.aw.region      ;  \
+//assign ``pat``_awuser   = req.aw.user        ;  \
+  assign ``pat``_wvalid   = req.w_valid        ;  \
+  assign ``pat``_wdata    = req.w.data         ;  \
+  assign ``pat``_wstrb    = req.w.strb         ;  \
+  assign ``pat``_wlast    = req.w.last         ;  \
+//assign ``pat``_wuser    = req.w.user         ;  \
+  assign ``pat``_bready   = req.b_ready        ;  \
+  assign ``pat``_arvalid  = req.ar_valid       ;  \
+  assign ``pat``_arid     = req.ar.id          ;  \
+  assign ``pat``_araddr   = {4'b00000, req.ar.addr[29:0]}  ;  \
+  assign ``pat``_arlen    = req.ar.len         ;  \
+  assign ``pat``_arsize   = req.ar.size        ;  \
+  assign ``pat``_arburst  = req.ar.burst       ;  \
+  assign ``pat``_arlock   = req.ar.lock        ;  \
+  assign ``pat``_arcache  = req.ar.cache       ;  \
+  assign ``pat``_arprot   = req.ar.prot        ;  \
+  assign ``pat``_arqos    = req.ar.qos         ;  \
+//assign ``pat``_arregion = req.ar.region      ;  \
+//assign ``pat``_aruser   = req.ar.user        ;  \
+  assign ``pat``_rready   = req.r_ready        ;  \
+  assign ``pat``_awready  = rsp.aw_ready        ;  \
+  assign ``pat``_arready  = rsp.ar_ready        ;  \
+  assign ``pat``_wready   = rsp.w_ready         ;  \
+  assign ``pat``_bvalid   = rsp.b_valid         ;  \
+  assign ``pat``_bid      = rsp.b.id            ;  \
+  assign ``pat``_bresp    = rsp.b.resp          ;  \
+//assign ``pat``_buser    = rsp.b.user          ;  \
+  assign ``pat``_rvalid   = rsp.r_valid         ;  \
+  assign ``pat``_rid      = rsp.r.id            ;  \
+  assign ``pat``_rdata    = rsp.r.data          ;  \
+  assign ``pat``_rresp    = rsp.r.resp          ;  \
+  assign ``pat``_rlast    = rsp.r.last  ;        
+//assign ``pat``_ruser    = rsp.r.user    
+
+
+//////////////////////////////////////////////////////////////
+// assign an axi req resp pair to an hbm channel, using old ariane axi
+// pat = "S00" or "S01" etc
+`define AXI_ASSIGN_MASTER(pat, bus) \
+  assign pat``_awvalid  = bus.aw_valid;  \
+  assign pat``_awid     = bus.aw_id;     \
+  assign pat``_awaddr   = bus.aw_addr; \
+  assign pat``_awlen    = bus.aw_len;    \
+  assign pat``_awsize   = bus.aw_size;   \
+  assign pat``_awburst  = bus.aw_burst;  \
+  assign pat``_awlock   = bus.aw_lock;   \
+  assign pat``_awcache  = bus.aw_cache;  \
+  assign pat``_awprot   = bus.aw_prot;   \
+  assign pat``_awqos    = bus.aw_qos;    \
+  assign pat``_awregion = bus.aw_region; \
+  assign pat``_awuser   = bus.aw_user;   \
+                                        \
+  assign pat``_wvalid   = bus.w_valid;   \
+  assign pat``_wdata    = bus.w_data;    \
+  assign pat``_wstrb    = bus.w_strb;    \
+  assign pat``_wlast    = bus.w_last;    \
+  assign pat``_wuser    = bus.w_user;    \
+                                        \
+  assign pat``_bready   = bus.b_ready;   \
+                                        \
+  assign pat``_arvalid  = bus.ar_valid;  \
+  assign pat``_arid     = bus.ar_id;     \
+  assign pat``_araddr   = bus.ar_addr;\
+  assign pat``_arlen    = bus.ar_len;    \
+  assign pat``_arsize   = bus.ar_size;   \
+  assign pat``_arburst  = bus.ar_burst;  \
+  assign pat``_arlock   = bus.ar_lock;   \
+  assign pat``_arcache  = bus.ar_cache;  \
+  assign pat``_arprot   = bus.ar_prot;   \
+  assign pat``_arqos    = bus.ar_qos;    \
+  assign pat``_arregion = bus.ar_region; \
+  assign pat``_aruser   = bus.ar_user;   \
+                                          \
+  assign pat``_rready   = bus.r_ready;   \
+                                          \
+  assign bus.aw_ready = pat``_awready;   \
+  assign bus.ar_ready = pat``_arready;   \
+  assign bus.w_ready  = pat``_wready;    \
+                                         \
+  assign bus.b_valid  = pat``_bvalid;    \
+  assign bus.b_id     = pat``_bid;       \
+  assign bus.b_resp   = pat``_bresp;     \
+  assign bus.b_user   = pat``_buser;     \
+                                         \
+  assign bus.r_valid  = pat``_rvalid;    \
+  assign bus.r_id     = pat``_rid;       \
+  assign bus.r_data   = pat``_rdata;     \
+  assign bus.r_resp   = pat``_rresp;     \
+  assign bus.r_last   = pat``_rlast;     \
+  assign bus.r_user   = pat``_ruser;     
+
+
+
 `endif
 //////////////////////////////////////////////////////////////
 // HBM axi channel port macro

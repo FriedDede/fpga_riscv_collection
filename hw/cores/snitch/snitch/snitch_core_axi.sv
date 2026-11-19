@@ -101,6 +101,8 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     typedef logic [IdWidthIn-1:0]       id_mst_t;
     typedef logic [IdWidthIn-1:0]      id_slv_t;
     typedef logic [UserWidth-1:0]       user_t;
+    // VM types (as in upstream snitch_cc): unused while VMSupport = 0
+    `SNITCH_VM_TYPEDEF(AddrWidth)
     typedef struct packed {
       snitch_pkg::acc_addr_e   addr;
       logic [IdWidthAcc - 1:0] id;
@@ -181,8 +183,8 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .acc_resp_t (acc_resp_t),
     .dreq_t (reqrsp_req_t),
     .drsp_t (reqrsp_rsp_t),
-    .pa_t (),
-    .l0_pte_t (snitch_l0_tlb_tb_pkg::l0_pte_t),
+    .pa_t (pa_t),
+    .l0_pte_t (l0_pte_t),
     .BootAddr (BootAddr),
     .SnitchPMACfg (SnitchPMACfg),
     .NumIntOutstandingLoads (NumIntOutstandingLoads),
@@ -282,7 +284,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .FILL_DW            ( DataWidth        ),
     .SERIAL_LOOKUP      ( 0                ),
     .L1_TAG_SCM         ( 0                ),
-    .NUM_AXI_OUTSTANDING( 1                ),
+    .NUM_AXI_OUTSTANDING( 2                ),
     .EARLY_LATCH        ( 0                ),
     .L0_EARLY_TAG_WIDTH ( snitch_pkg::PageShift - $clog2(ICacheLineWidth/8) ),
     .ISO_CROSSING       ( IsoCrossing     ),

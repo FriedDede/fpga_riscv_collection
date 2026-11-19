@@ -39,8 +39,8 @@ localparam PERIF_NUMBER     = 3; // uart, timer, plic
 localparam DRAM_CH_NUMBER   = CLUSTER_NUMBER; // snitch clusters
 localparam AxiAddrWidth     = snitch_cluster_pkg::AddrWidth;            // 32
 localparam AxiDataWidth     = snitch_cluster_pkg::NarrowDataWidth;      // 64
-localparam AxiIdWidthCore = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(3 * CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
+localparam AxiIdWidthCore = snitch_cluster_pkg::NarrowIdWidthIn;      // 1
+localparam AxiIdWidthToUncore = AxiIdWidthCore + $clog2(3 * CORE_NUMBER);  // 1 + 2 (each core exposes 3 channels)
 localparam AxiIdWidthToPerifs = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
 localparam AxiUserWidth     = snitch_cluster_pkg::NarrowUserWidth;
 

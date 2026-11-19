@@ -653,6 +653,120 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Macros for assigning flattened AXI ports to req/resp AXI structs
+// Flat AXI ports are required by the Vivado IP Integrator. Vivado naming convention is followed.
+//
+// Usage Example:
+// `AXI_ASSIGN_MASTER_TO_FLAT("my_bus", my_req_struct, my_rsp_struct)
+`define AXI_ASSIGN_BUS_MASTER_TO_FLAT(pat, bus) \
+  assign m_axi_``pat``_awvalid  = bus.aw_valid;  \
+  assign m_axi_``pat``_awid     = bus.aw_id;     \
+  assign m_axi_``pat``_awaddr   = bus.aw_addr;   \
+  assign m_axi_``pat``_awlen    = bus.aw_len;    \
+  assign m_axi_``pat``_awsize   = bus.aw_size;   \
+  assign m_axi_``pat``_awburst  = bus.aw_burst;  \
+  assign m_axi_``pat``_awlock   = bus.aw_lock;   \
+  assign m_axi_``pat``_awcache  = bus.aw_cache;  \
+  assign m_axi_``pat``_awprot   = bus.aw_prot;   \
+  assign m_axi_``pat``_awqos    = bus.aw_qos;    \
+  assign m_axi_``pat``_awregion = bus.aw_region; \
+  //assign m_axi_``pat``_awuser   = bus.aw_user;   \
+                                                 \
+  assign m_axi_``pat``_wvalid   = bus.w_valid;   \
+  assign m_axi_``pat``_wdata    = bus.w_data;    \
+  assign m_axi_``pat``_wstrb    = bus.w_strb;    \
+  assign m_axi_``pat``_wlast    = bus.w_last;    \
+  //assign m_axi_``pat``_wuser    = bus.w_user;    \
+                                                 \
+  assign m_axi_``pat``_bready   = bus.b_ready;   \
+                                                 \
+  assign m_axi_``pat``_arvalid  = bus.ar_valid;  \
+  assign m_axi_``pat``_arid     = bus.ar_id;     \
+  assign m_axi_``pat``_araddr   = bus.ar_addr;   \
+  assign m_axi_``pat``_arlen    = bus.ar_len;    \
+  assign m_axi_``pat``_arsize   = bus.ar_size;   \
+  assign m_axi_``pat``_arburst  = bus.ar_burst;  \
+  assign m_axi_``pat``_arlock   = bus.ar_lock;   \
+  assign m_axi_``pat``_arcache  = bus.ar_cache;  \
+  assign m_axi_``pat``_arprot   = bus.ar_prot;   \
+  assign m_axi_``pat``_arqos    = bus.ar_qos;    \
+  assign m_axi_``pat``_arregion = bus.ar_region; \
+  //assign m_axi_``pat``_aruser   = bus.ar_user;   \
+                                                 \
+  assign m_axi_``pat``_rready   = bus.r_ready;   \
+                                                 \
+  assign bus.aw_ready = m_axi_``pat``_awready;   \
+  assign bus.ar_ready = m_axi_``pat``_arready;   \
+  assign bus.w_ready  = m_axi_``pat``_wready;    \
+                                                 \
+  assign bus.b_valid  = m_axi_``pat``_bvalid;    \
+  assign bus.b_id     = m_axi_``pat``_bid;       \
+  assign bus.b_resp   = m_axi_``pat``_bresp;     \
+  //assign bus.b_user   = m_axi_``pat``_buser;     \
+                                                 \
+  assign bus.r_valid  = m_axi_``pat``_rvalid;    \
+  assign bus.r_id     = m_axi_``pat``_rid;       \
+  assign bus.r_data   = m_axi_``pat``_rdata;     \
+  assign bus.r_resp   = m_axi_``pat``_rresp;     \
+  assign bus.r_last   = m_axi_``pat``_rlast;     \
+  //assign bus.r_user   = m_axi_``pat``_ruser;
+
+
+`define AXI_ASSIGN_BUS_SLAVE_TO_FLAT(pat, bus)  \
+  assign bus.aw_valid  = s_axi_``pat``_awvalid;  \
+  assign bus.aw_id     = s_axi_``pat``_awid;     \
+  assign bus.aw_addr   = s_axi_``pat``_awaddr;   \
+  assign bus.aw_len    = s_axi_``pat``_awlen;    \
+  assign bus.aw_size   = s_axi_``pat``_awsize;   \
+  assign bus.aw_burst  = s_axi_``pat``_awburst;  \
+  assign bus.aw_lock   = s_axi_``pat``_awlock;   \
+  assign bus.aw_cache  = s_axi_``pat``_awcache;  \
+  assign bus.aw_prot   = s_axi_``pat``_awprot;   \
+  assign bus.aw_qos    = s_axi_``pat``_awqos;    \
+  assign bus.aw_region = s_axi_``pat``_awregion; \
+  //assign bus.aw_user   = s_axi_``pat``_awuser;   \
+                                                 \
+  assign bus.w_valid   = s_axi_``pat``_wvalid;   \
+  assign bus.w_data    = s_axi_``pat``_wdata;    \
+  assign bus.w_strb    = s_axi_``pat``_wstrb;    \
+  assign bus.w_last    = s_axi_``pat``_wlast;    \
+  //assign bus.w_user    = s_axi_``pat``_wuser;    \
+                                                 \
+  assign bus.b_ready   = s_axi_``pat``_bready;   \
+                                                 \
+  assign bus.ar_valid  = s_axi_``pat``_arvalid;  \
+  assign bus.ar_id     = s_axi_``pat``_arid;     \
+  assign bus.ar_addr   = s_axi_``pat``_araddr;   \
+  assign bus.ar_len    = s_axi_``pat``_arlen;    \
+  assign bus.ar_size   = s_axi_``pat``_arsize;   \
+  assign bus.ar_burst  = s_axi_``pat``_arburst;  \
+  assign bus.ar_lock   = s_axi_``pat``_arlock;   \
+  assign bus.ar_cache  = s_axi_``pat``_arcache;  \
+  assign bus.ar_prot   = s_axi_``pat``_arprot;   \
+  assign bus.ar_qos    = s_axi_``pat``_arqos;    \
+  assign bus.ar_region = s_axi_``pat``_arregion; \
+  //assign bus.ar_user   = s_axi_``pat``_aruser;   \
+                                                 \
+  assign bus.r_ready   = s_axi_``pat``_rready;   \
+                                                 \
+  assign s_axi_``pat``_awready = bus.aw_ready;   \
+  assign s_axi_``pat``_arready = bus.ar_ready;   \
+  assign s_axi_``pat``_wready  = bus.w_ready;    \
+                                                 \
+  assign s_axi_``pat``_bvalid  = bus.b_valid;    \
+  assign s_axi_``pat``_bid     = bus.b_id;       \
+  assign s_axi_``pat``_bresp   = bus.b_resp;     \
+  //assign s_axi_``pat``_buser   = bus.b_user;     \
+                                                 \
+  assign s_axi_``pat``_rvalid  = bus.r_valid;    \
+  assign s_axi_``pat``_rid     = bus.r_id;       \
+  assign s_axi_``pat``_rdata   = bus.r_data;     \
+  assign s_axi_``pat``_rresp   = bus.r_resp;     \
+  assign s_axi_``pat``_rlast   = bus.r_last;     \
+  //assign s_axi_``pat``_ruser   = bus.r_user;
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Macros instantiating signal highlighter from common verification
 // https://github.com/pulp-platform/common_verification.git
 // `AXI_HIGHLIGHT(__name, __aw_t, __w_t, __b_t, __ar_t, __r_t, __req, __resp)
