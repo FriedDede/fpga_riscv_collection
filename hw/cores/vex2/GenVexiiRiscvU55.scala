@@ -6,7 +6,8 @@
 //              - RV32IM + Zicsr, Zifencei, Zicntr (mcycle/minstret), Zicbom (cbo.clean/flush/inval:
 //                the D$ is write-back, the payload flushes what the host must see)
 //              - machine mode only, mhartid from an input port (hartId), reset vector 0x0 (bootrom_u55)
-//              - single issue, full bypassing, BTB + GShare + RAS branch prediction
+//              - single issue, full bypassing, BTB + GShare + RAS branch prediction (the Makefile
+//                default VEX2_ARGS makes it dual issue, see DSE.md)
 //              - 4 KiB direct mapped I$, 8 KiB direct mapped write-back D$, 64 byte lines,
 //                64 bit refill / writeback buses (a line in 8 beats)
 //              - three AXI4 masters: FetchL1Axi4 (I$ refills, read only), LsuL1Axi4 (D$ refills and

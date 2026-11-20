@@ -47,9 +47,10 @@ VEX_SRCS      = $(VEX_GEN) $(shell find $(VEX_ROOT)/src/main/scala -name '*.scal
 VEX2_ROOT     = $(CURDIR)/hw/cores/vex2/VexiiRiscv
 VEX2_GEN      = $(CURDIR)/hw/cores/vex2/GenVexiiRiscvU55.scala
 VEX2_SRCS     = $(VEX2_GEN) $(shell find $(VEX2_ROOT)/src/main/scala -name '*.scala' 2>/dev/null)
-# extra VexiiRiscv options over the u55 configuration, e.g. VEX2_ARGS="--decoders 2 --lanes 2".
-# The generated core is not rebuilt when they change: use another BUILD_DIR per variant
-VEX2_ARGS    ?=
+# VexiiRiscv options over the u55 configuration (ParamSimple), default: dual issue, 250 MHz
+# (hw/cores/vex2/DSE.md). VEX2_ARGS= builds the single issue configuration of the .scala.
+# The core is regenerated when they change (vexiiriscv/args of the run)
+VEX2_ARGS    ?= --decoders 2 --lanes 2 --with-late-alu --regfile-async --allow-bypass-from 0 --dispatcher-at 2 --relaxed-branch
 BOOTROM_SRCS  = $(wildcard bootrom_u55/*.S bootrom_u55/*.lds bootrom_u55/src/*.c bootrom_u55/src/*.h) bootrom_u55/Makefile bootrom_u55/gen_rom.py
 
 # per core: bootrom (bootrom_u55 CORE=) and generated sources of the run
@@ -65,9 +66,10 @@ GEN_mini       = riscv_mini/Tile.sv
 GEN_vex        = vexriscv/VexRiscvU55.v
 GEN_vex2       = vexiiriscv/VexiiRiscvU55.v
 
-.PHONY: all snitch cva veer mini vex vex2 bitgen sim-snitch sim-cva6 sim-veer sim-mini sim-vex sim-vex2 clean
+.PHONY: all snitch cva veer mini vex vex2 bitgen sim-snitch sim-cva6 sim-veer sim-mini sim-vex sim-vex2 clean FORCE
 # the generated sources are built by pattern rules: never delete them as intermediate files
 .SECONDARY:
+FORCE:
 
 all:
 	@echo "usage: make snitch | cva | veer | mini | vex | vex2 | bitgen [CORE=snitch|cva6|veer|mini|vex|vex2] | sim-snitch | sim-cva6 | sim-veer | sim-mini | sim-vex | sim-vex2 | clean"
@@ -133,7 +135,10 @@ $(BUILD_DIR)/%/vexriscv/VexRiscvU55.v: $(VEX_SRCS)
 # of VexiiRiscv (git submodule update --init ext/SpinalHDL ext/rvls in hw/cores/vex2/VexiiRiscv).
 # tester/TestbenchServer.scala (simulation server, unused here) needs JDK 16+: not compiled
 VEX2_SBT_LOCK = $(VEX2_ROOT)/target/.sbt.lock
-$(BUILD_DIR)/%/vexiiriscv/VexiiRiscvU55.v: $(VEX2_SRCS)
+$(BUILD_DIR)/%/vexiiriscv/args: FORCE
+	@mkdir -p $(dir $@)
+	@echo '$(VEX2_ARGS)' | cmp -s - $@ || echo '$(VEX2_ARGS)' > $@
+$(BUILD_DIR)/%/vexiiriscv/VexiiRiscvU55.v: $(VEX2_SRCS) $(BUILD_DIR)/%/vexiiriscv/args
 	mkdir -p $(dir $@) $(dir $(VEX2_SBT_LOCK))
 	cd $(VEX2_ROOT) && flock $(VEX2_SBT_LOCK) sbt -batch 'set Compile / unmanagedSources += file("$(VEX2_GEN)")' \
 		'set Compile / unmanagedSources / excludeFilter := HiddenFileFilter || "TestbenchServer.scala"' \

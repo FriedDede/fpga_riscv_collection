@@ -162,7 +162,10 @@ Interrupts: CLINT timer (`mtip`) and software (`msip`), PLIC context 0 of the ha
 `GenVexiiRiscvU55.scala` builds VexiiRiscv (`ParamSimple`) sized like the VexRiscv configuration:
 - RV32IM + Zicsr, Zifencei, Zicntr (`mcycle` / `minstret`), Zicbom; machine mode only, no MMU, no PMP
 - reset vector 0x0, `mhartid` from the `hartId` input (core index in the cluster)
-- single issue, full bypassing, BTB (256 sets) + GShare (1 KiB) + RAS branch prediction
+- full bypassing, BTB (256 sets) + GShare (1 KiB) + RAS branch prediction; single issue in the
+  .scala, the Makefile default `VEX2_ARGS` makes it dual issue (`--decoders 2 --lanes 2
+  --with-late-alu --regfile-async --allow-bypass-from 0 --dispatcher-at 2 --relaxed-branch`, 1.06 IPC
+  on `sim/bench`, 250 MHz), `VEX2_ARGS=` for single issue: see [cores/vex2/DSE.md](cores/vex2/DSE.md)
 - 4 KiB direct mapped I$, 8 KiB direct mapped **write-back** D$ (VexiiRiscv has no write-through
   L1), 64 byte lines, 64 bit refill / writeback buses (8 beat bursts)
 - PMA: DRAM cacheable, bootrom executable (fetched through the I$), CLINT and peripherals io

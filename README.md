@@ -151,7 +151,7 @@ core, its memories, the AXI clock domain crossings and the interrupt synchronize
 |------------|----------------------------------|----------------------------|--------|--------|--------|--------|-----|--------|
 | riscv-mini | RV32I_Zicsr                      | 275 / 50                   | 4731   | 3565   | 0      | 10     | 0   | 0.36   |
 | VexRiscv   | RV32IM_Zicsr                     | 250 / 250                  | 2720   | 3374   | 2      | 9      | 4   | 0.21   |
-| VexiiRiscv | RV32IM_Zicsr_Zifencei_Zicntr_Zicbom | 250 / 250               | 4598   | 6158   | 2      | 9      | 4   | 0.35   |
+| VexiiRiscv | RV32IM_Zicsr_Zifencei_Zicntr_Zicbom | 250 / 250               | 7671   | 7633   | 3      | 9      | 4   | 0.59   |
 | Snitch     | RV32IMAFD_Zicsr                  | 50 / 250                   | 14828  | 9907   | 12     | 0      | 15  | 1.14   |
 | CVA6       | RV64IMAFDC_Zicsr_Zifencei_Zcb    | 125 / 250                  | 31311  | 14680  | 84     | 0      | 27  | 2.40   |
 | VeeR-EL2   | RV32IMC_Zicsr_Zifencei_Zba_Zbb_Zbc_Zbs | 80 / 250             | 37138  | 25308  | 20     | 6      | 4   | 2.85   |
@@ -165,8 +165,8 @@ ISA as configured in this repository:
 - VeeR-EL2: `VEER_CONFIG` snapshot, machine mode only (no user mode), 16 PMP entries
 - VexRiscv: GenFullNoMmuMaxPerf (RV32IM, 4 KiB I$ with dynamic target branch prediction, 8 KiB
   write-through D$, 64 bit cache memory interface, no MMU), machine mode only, see [hw/README.md](hw/README.md)
-- VexiiRiscv: RV32IM + Zicntr, Zicbom (4 KiB I$, 8 KiB write-back D$, BTB + GShare + RAS, no MMU),
-  machine mode only, see [hw/README.md](hw/README.md)
+- VexiiRiscv: RV32IM + Zicntr, Zicbom (dual issue, 4 KiB I$, 8 KiB write-back D$, BTB + GShare + RAS,
+  no MMU), machine mode only, see [hw/cores/vex2/DSE.md](hw/cores/vex2/DSE.md) for the pipeline options, see [hw/README.md](hw/README.md)
 - A (Snitch, CVA6): the cores issue the atomics as AXI atomic operations (`aw_atop`), but the HBM
   channel ports of the block design have no `aw_atop`: an atomic to the DRAM reaches it as a plain
   write (an `axi_riscv_atomics` adapter before the HBM channel would be needed)
