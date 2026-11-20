@@ -21,10 +21,10 @@ so a new file in these folders is picked up as soon as it is instantiated.
 | `tops/u55_VeeR_top.sv`       | VeeR-EL2 top (`veer_u55_xilinx_bd`) |
 | `tops/u55_mini_top.sv`       | riscv-mini top (`mini_u55_xilinx_bd`) |
 | `tops/u55_vex_top.sv`        | VexRiscv top (`vex_u55_xilinx_bd`) |
+| `tops/u55_vex2_top.sv`       | VexiiRiscv top (`vex2_u55_xilinx_bd`) |
 | `tops/*_sim.sv`              | older simulation tops, not used by the build flow (testbenches are in `sim/`) |
 | `cd_wrappers/<core>_cd_wrapper.sv` | each core in its own clock domain (see below) |
 | `cd_wrappers/cluster_clk_gen.sv`   | clock generator of a cluster: crossbar clock + one clock per core |
-| `cd_wrappers/veer_fpga_mem.sv`, `veer_fpga_sram.sv` | VeeR DCCM / I$ (/ ICCM) memories as BRAM |
 | `xdma_boot/axi4_boot_check.v` | host reset checker, module of the QDMA/HBM block design |
 
 ## cores
@@ -37,7 +37,10 @@ so a new file in these folders is picked up as soon as it is instantiated.
 | `riscv-mini/`     | riscv-mini (RV32I, Chisel), git submodule of [ucb-bar/riscv-mini](https://github.com/ucb-bar/riscv-mini). Its `Tile.sv` is generated in the run folder (`build/<run>/riscv_mini`) by the Makefile (sbt) |
 | `vex/VexRiscv/`   | VexRiscv (SpinalHDL), git submodule of [SpinalHDL/VexRiscv](https://github.com/SpinalHDL/VexRiscv). `VexRiscvU55.v` is generated in the run folder (`build/<run>/vexriscv`) by the Makefile (sbt) |
 | `vex/GenVexRiscvU55.scala` | the VexRiscv configuration of the u55c tops, compiled with the VexRiscv sources (not copied in the submodule) |
-| `Cores-VeeR-EL2/` | VeeR-EL2, git submodule of [chipsalliance/Cores-VeeR-EL2](https://github.com/chipsalliance/Cores-VeeR-EL2). Its configuration (snapshot) is generated in the run folder (`build/<run>/veer_snapshot`) from `VEER_CONFIG` in the Makefile |
+| `vex2/VexiiRiscv/` | VexiiRiscv (SpinalHDL), git submodule of [SpinalHDL/VexiiRiscv](https://github.com/SpinalHDL/VexiiRiscv). `VexiiRiscvU55.v` is generated in the run folder (`build/<run>/vexiiriscv`) by the Makefile (sbt); it needs its `ext/SpinalHDL` and `ext/rvls` submodules (`git submodule update --init ext/SpinalHDL ext/rvls` inside it) |
+| `vex2/GenVexiiRiscvU55.scala` | the VexiiRiscv configuration of the u55c tops, compiled with the VexiiRiscv sources (not copied in the submodule) |
+| `veer/Cores-VeeR-EL2/` | VeeR-EL2, git submodule of [chipsalliance/Cores-VeeR-EL2](https://github.com/chipsalliance/Cores-VeeR-EL2). Its configuration (snapshot) is generated in the run folder (`build/<run>/veer_snapshot`) from `VEER_CONFIG` in the Makefile |
+| `veer/veer_fpga_mem.sv`, `veer_fpga_sram.sv` | VeeR DCCM / I$ (/ ICCM) memories as BRAM |
 
 ## infra
 
@@ -94,7 +97,7 @@ The tops connect the clusters to the `hbm_interface` block design with the macro
 
 # Memory maps
 
-## Snitch, CVA6, riscv-mini and VexRiscv
+## Snitch, CVA6, riscv-mini, VexRiscv and VexiiRiscv
 | Range                     | Target |
 |---------------------------|--------|
 | 0x0000_0000 - 0x0000_FFFF | bootrom |
@@ -152,5 +155,28 @@ full bypassing, no MMU) with these changes:
 - the memories (register file, caches, branch history) are initialized to zero in the generated
   Verilog: X in the uninitialized branch history corrupts the pipeline flushes in RTL simulation
   (on the FPGA the RAMs power up at zero)
+
+Interrupts: CLINT timer (`mtip`) and software (`msip`), PLIC context 0 of the hart (`meip`).
+
+## VexiiRiscv notes
+`GenVexiiRiscvU55.scala` builds VexiiRiscv (`ParamSimple`) sized like the VexRiscv configuration:
+- RV32IM + Zicsr, Zifencei, Zicntr (`mcycle` / `minstret`), Zicbom; machine mode only, no MMU, no PMP
+- reset vector 0x0, `mhartid` from the `hartId` input (core index in the cluster)
+- single issue, full bypassing, BTB (256 sets) + GShare (1 KiB) + RAS branch prediction
+- 4 KiB direct mapped I$, 8 KiB direct mapped **write-back** D$ (VexiiRiscv has no write-through
+  L1), 64 byte lines, 64 bit refill / writeback buses (8 beat bursts)
+- PMA: DRAM cacheable, bootrom executable (fetched through the I$), CLINT and peripherals io
+- three AXI4 masters in `vex2_cd_wrapper`: `ibus` (I$, read only), `dbus` (D$ refills and
+  writebacks) and `iobus` (uncached accesses, 32 bit, upsized to the cluster width), all without
+  id (one transaction in flight each)
+- the `time` csr (`rdtime`) reads 0: the CLINT `mtime` is not routed to the core
+- memories initialized to zero in the generated Verilog, as for VexRiscv
+- `tester/TestbenchServer.scala` of VexiiRiscv needs JDK 16+: the Makefile leaves it out of the sbt
+  build (it is only used by the VexiiRiscv simulation server)
+
+The D$ is write-back: data the host must read from the HBM (results, mailboxes) has to be written
+back with `cbo.flush` (or `cbo.clean`), and data the host writes after the core cached it must be
+dropped with `cbo.inval` before reading it (compile with `-march=rv32im_zicsr_zifencei_zicbom`).
+`sim/vex2/sw/crt0.S` flushes `tohost` this way.
 
 Interrupts: CLINT timer (`mtip`) and software (`msip`), PLIC context 0 of the hart (`meip`).

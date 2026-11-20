@@ -9,6 +9,11 @@
 [submodule "riscv-mini"]
 	path = hw/cores/riscv-mini
 	url = https://github.com/ucb-bar/riscv-mini
+	
 [submodule "VexRiscv"]
 	path = hw/cores/vex/VexRiscv
 	url = https://github.com/SpinalHDL/VexRiscv.git
+
+[submodule "VexiiRiscv"]
+	path = hw/cores/vex2/VexiiRiscv
+	url = https://github.com/SpinalHDL/VexiiRiscv

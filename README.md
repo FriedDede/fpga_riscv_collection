@@ -13,6 +13,7 @@ Supported cores are:
 - VeeR-EL2,  [original repo](https://github.com/chipsalliance/Cores-VeeR-EL2)
 - riscv-mini [original repo](https://github.com/ucb-bar/riscv-mini)
 - VexRiscv [original repo](https://github.com/SpinalHDL/VexRiscv.git)
+- VexiiRiscv [original repo](https://github.com/SpinalHDL/VexiiRiscv)
 
 Each core is wrapped in a CORE_cd_wrapper, which wraps each core inside an isolated core clock domain, with clock domain converters on the core side and a standard interface with minimal variability across the cores:
 
@@ -51,18 +52,18 @@ Complexes shares access to the board HBM with the host, which loads the software
 Initialization code for the riscv cores, compiled into an rtl bootrom, and its compile scripts.
 `make -C bootrom_u55 CORE=<core> BUILD_DIR=<dir> all` builds `bootrom_<core>.elf/.bin/.img/.dump/.sv`
 (module `bootrom_<core>`) in `<dir>`: `snitch` (rv32g), `cva` (rv64gc), `veer` (rv32imc, stack in
-the DCCM), `mini` (rv32i, code at the reset pc 0x200), `vex` (rv32im). The top Makefile builds the bootrom of each
+the DCCM), `mini` (rv32i, code at the reset pc 0x200), `vex` (rv32im, also used by VexiiRiscv). The top Makefile builds the bootrom of each
 run in its folder, nothing is generated in `bootrom_u55`.
 
 ## hw
 All the hardware of the compute platform, see [hw/README.md](hw/README.md):
 - `hw/cluster`: the FPGA tops, the clock domain wrappers of the cores and the boot reset logic
-- `hw/cores`: the cores (Snitch, CVA6, VeeR-EL2, riscv-mini and VexRiscv as git submodules) and the FPU
+- `hw/cores`: the cores (Snitch, CVA6, VeeR-EL2, riscv-mini, VexRiscv and VexiiRiscv as git submodules) and the FPU
 - `hw/infra`: AXI, APB and register interfaces, common cells and peripherals from the PULP project
 
 ## sim
 Xcelium testbenches of the Snitch (`sim/snitch`), CVA6 (`sim/cva6`), VeeR-EL2 (`sim/veer`),
-riscv-mini (`sim/mini`) and VexRiscv (`sim/vex`) tops: the FPGA top is
+riscv-mini (`sim/mini`), VexRiscv (`sim/vex`) and VexiiRiscv (`sim/vex2`) tops: the FPGA top is
 simulated as is, with models of the HBM/QDMA block design and of the clock wizards (`sim/models`),
 and boots a test payload from DRAM.
 
@@ -82,7 +83,7 @@ crossing constraints (`xdc/u55/u55_clock_domains.tcl`).
 
 # Build
 Requires Vivado 2024.2 (with the Alveo U55C board files), the riscv gcc toolchain
-(`riscv64-unknown-elf-`), for riscv-mini and VexRiscv sbt and a JDK (11 or newer, the Chisel / SpinalHDL to Verilog
+(`riscv64-unknown-elf-`), for riscv-mini, VexRiscv and VexiiRiscv sbt and a JDK (11 or newer, the Chisel / SpinalHDL to Verilog
 generation downloads its dependencies on the first run) and, for simulation, Xcelium.
 Fetch the submodules first:
 
@@ -90,13 +91,14 @@ Fetch the submodules first:
 
 Every output goes in `build/` (`BUILD_DIR=<dir>` to change it):
 
-    make snitch | cva | veer | mini | vex # Vivado project in build/<core>/u55_<core>.xpr
+    make snitch | cva | veer | mini | vex | vex2 # Vivado project in build/<core>/u55_<core>.xpr
     make bitgen [CORE=<core>] [JOBS=8]    # synthesis, implementation and bitstream of the last (or given) project
     make sim-snitch                       # Snitch boot test in xcelium (bootrom -> DRAM payload, mul/div, fpu lsu port)
     make sim-cva6                         # CVA6 boot test in xcelium (bootrom -> DRAM payload, fpu, I$/D$ refills)
     make sim-veer                         # VeeR boot test in xcelium (bootrom -> DRAM payload, DCCM stack, DMA port, I$)
     make sim-mini                         # riscv-mini boot test in xcelium (bootrom -> DRAM payload, D$ write-back)
     make sim-vex                          # VexRiscv boot test in xcelium (bootrom -> DRAM payload, I$/D$, ecall, CLINT irqs)
+    make sim-vex2                         # VexiiRiscv boot test in xcelium (bootrom -> DRAM payload, write-back D$ + cbo, ecall, CLINT irqs)
     make clean                            # remove build/
 
 The clocks of the three domains (in MHz, default 50) are set when the project is created:
@@ -128,6 +130,7 @@ Configurations that meet timing on the whole design (setup and hold) after `make
 | CVA6       | 1      | 1         | 100             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
 | Snitch     | 1      | 1         | 50              | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
 | VexRiscv   | 1      | 1         | 250             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
+| VexiiRiscv | 1      | 1         | 250             | 250                | Vivado Synthesis Defaults | Vivado Implementation Defaults |
 
     make mini FREQ_CORE=200 FREQ_CLUSTER=50 FREQ_PERIPH=50 && make bitgen
     make mini FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && \
@@ -137,6 +140,7 @@ Configurations that meet timing on the whole design (setup and hold) after `make
     make cva FREQ_CORE=100 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
     make snitch FREQ_CORE=50 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
     make vex FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
+    make vex2 FREQ_CORE=250 FREQ_CLUSTER=250 FREQ_PERIPH=50 && make bitgen
 
 ## Core utilization
 Post implementation utilization of one core with its clock domain wrapper (`hw/cluster/cd_wrappers`:
@@ -147,6 +151,7 @@ core, its memories, the AXI clock domain crossings and the interrupt synchronize
 |------------|----------------------------------|----------------------------|--------|--------|--------|--------|-----|--------|
 | riscv-mini | RV32I_Zicsr                      | 275 / 50                   | 4731   | 3565   | 0      | 10     | 0   | 0.36   |
 | VexRiscv   | RV32IM_Zicsr                     | 250 / 250                  | 2720   | 3374   | 2      | 9      | 4   | 0.21   |
+| VexiiRiscv | RV32IM_Zicsr_Zifencei_Zicntr_Zicbom | 250 / 250               | 4598   | 6158   | 2      | 9      | 4   | 0.35   |
 | Snitch     | RV32IMAFD_Zicsr                  | 50 / 250                   | 14828  | 9907   | 12     | 0      | 15  | 1.14   |
 | CVA6       | RV64IMAFDC_Zicsr_Zifencei_Zcb    | 125 / 250                  | 31311  | 14680  | 84     | 0      | 27  | 2.40   |
 | VeeR-EL2   | RV32IMC_Zicsr_Zifencei_Zba_Zbb_Zbc_Zbs | 80 / 250             | 37138  | 25308  | 20     | 6      | 4   | 2.85   |
@@ -160,6 +165,8 @@ ISA as configured in this repository:
 - VeeR-EL2: `VEER_CONFIG` snapshot, machine mode only (no user mode), 16 PMP entries
 - VexRiscv: GenFullNoMmuMaxPerf (RV32IM, 4 KiB I$ with dynamic target branch prediction, 8 KiB
   write-through D$, 64 bit cache memory interface, no MMU), machine mode only, see [hw/README.md](hw/README.md)
+- VexiiRiscv: RV32IM + Zicntr, Zicbom (4 KiB I$, 8 KiB write-back D$, BTB + GShare + RAS, no MMU),
+  machine mode only, see [hw/README.md](hw/README.md)
 - A (Snitch, CVA6): the cores issue the atomics as AXI atomic operations (`aw_atop`), but the HBM
   channel ports of the block design have no `aw_atop`: an atomic to the DRAM reaches it as a plain
   write (an `axi_riscv_atomics` adapter before the HBM channel would be needed)
@@ -173,3 +180,4 @@ sources generated for it, rebuilt when their inputs change:
 - `veer_snapshot/`: VeeR-EL2 configuration, from `VEER_CONFIG` in the Makefile (VeeR runs)
 - `riscv_mini/`: riscv-mini `Tile.sv`, from its Chisel sources with sbt (riscv-mini runs)
 - `vexriscv/`: `VexRiscvU55.v`, from the VexRiscv SpinalHDL sources with sbt (VexRiscv runs)
+- `vexiiriscv/`: `VexiiRiscvU55.v`, from the VexiiRiscv SpinalHDL sources with sbt (VexiiRiscv runs)

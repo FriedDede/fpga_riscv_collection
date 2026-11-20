@@ -38,5 +38,5 @@ gmon.out
 
 *.library_mapping.xml*
 *.project*
-# build outputs (make snitch | cva | veer | mini | vex | bitgen | sim-<core>)
+# build outputs (make snitch | cva | veer | mini | vex | vex2 | bitgen | sim-<core>)
 /build/

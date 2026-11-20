@@ -17,6 +17,14 @@
 
 `timescale 1ns/1ps
 
+// cluster and core periods of the model, override with +define+SIM_CLUSTER_PERIOD=<t> +define+SIM_CORE_PERIOD=<t>
+`ifndef SIM_CLUSTER_PERIOD
+`define SIM_CLUSTER_PERIOD 16ns
+`endif
+`ifndef SIM_CORE_PERIOD
+`define SIM_CORE_PERIOD 13ns
+`endif
+
 module xlnx_clk_gen_sim_osc #(
     parameter realtime Period = 10ns,
     parameter realtime Phase  = 0ns
@@ -50,8 +58,8 @@ endmodule
 
 // cluster clock + 6 core clocks
 module xlnx_clk_gen_cluster #(
-    parameter realtime ClusterPeriod = 16ns,    // 62.5 MHz
-    parameter realtime CorePeriod    = 13ns     // ~77 MHz
+    parameter realtime ClusterPeriod = `SIM_CLUSTER_PERIOD,    // default 62.5 MHz
+    parameter realtime CorePeriod    = `SIM_CORE_PERIOD        // default ~77 MHz
 )(
     output logic cluster_clk,
     output logic core_clk_0,

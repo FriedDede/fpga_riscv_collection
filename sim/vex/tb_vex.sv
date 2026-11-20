@@ -21,7 +21,8 @@ module tb_vex;
     localparam time         CLOCK_PERIOD = 10ns;     // 100 MHz board clocks
     localparam time         UART_BIT     = 8640ns;   // 50 MHz / (16 * 27), init_uart(50MHz, 115200)
     localparam int unsigned TOHOST       = 32'h0000_1000; // DRAM 0x8000_1000, HBM address
-    localparam longint      MAX_CYCLES   = 5_000_000;
+    longint                 MAX_CYCLES   = 5_000_000;  // cluster cycles, +MAX_CYCLES=<n>
+    initial void'($value$plusargs("MAX_CYCLES=%d", MAX_CYCLES));
 
     logic clk;
     logic rst_n;
